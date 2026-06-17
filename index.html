@@ -728,7 +728,7 @@ function doImport() {
 // GOOGLE SHEETS API — fetch (sama persis dengan tracker kiri yang bekerja)
 // ============================================================
 function loadFromSheets(force) {
-  // Tampilkan data cache/hardcoded dulu supaya tidak blank
+  // Render cached/hardcoded data immediately
   try {
     var cached = localStorage.getItem('authr_clients_cache');
     if (cached) {
@@ -743,27 +743,33 @@ function loadFromSheets(force) {
   setSyncStatus('loading', 'Memuat dari Google Sheets...');
 
   fetch(SHEETS_URL + '?action=load&t=' + Date.now())
-    .then(function(resp){ return resp.json(); })
-    .then(function(res) {
-      if (res.ok && res.data) {
-        var remote = JSON.parse(res.data);
-        if (!force && LAST_SERVER_TS && remote.ts && remote.ts !== LAST_SERVER_TS) {
-          showConflictBanner(); setSyncStatus('ok', 'Ada update dari tim'); return;
+    .then(function(resp){ return resp.text(); })
+    .then(function(text) {
+      try {
+        var res = JSON.parse(text);
+        // Format: {ok: true, data: "{clients:[...]}"}
+        if (res.ok && res.data) {
+          var remote = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+          if (!force && LAST_SERVER_TS && remote.ts && remote.ts !== LAST_SERVER_TS) {
+            showConflictBanner(); setSyncStatus('ok', 'Ada update dari tim'); return;
+          }
+          STATE.clients = remote.clients || [];
+          STATE.categories = remote.categories || STATE.categories;
+          LAST_SERVER_TS = remote.ts || null;
+          try { localStorage.setItem('authr_clients_cache', JSON.stringify({clients:STATE.clients,categories:STATE.categories})); } catch(e) {}
+          setSyncStatus('ok', 'Tersinkron — ' + STATE.clients.length + ' klien');
+          updateLastSyncText(); hideConflictBanner(); render();
+        } else if (res.ok && !res.data) {
+          setSyncStatus('ok', 'Sheets kosong');
+        } else {
+          setSyncStatus('error', 'Gagal: ' + (res.error||'unknown'));
         }
-        STATE.clients = remote.clients || [];
-        STATE.categories = remote.categories || STATE.categories;
-        LAST_SERVER_TS = remote.ts || null;
-        try { localStorage.setItem('authr_clients_cache', JSON.stringify({clients:STATE.clients,categories:STATE.categories})); } catch(e) {}
-        setSyncStatus('ok', 'Tersinkron dengan Google Sheets ' + '(' + STATE.clients.length + ' klien)');
-        updateLastSyncText(); hideConflictBanner(); render();
-      } else if (res.ok && !res.data) {
-        setSyncStatus('ok', 'Sheets kosong');
-      } else {
-        setSyncStatus('error', 'Gagal load data');
+      } catch(e) {
+        setSyncStatus('error', 'Gagal parse response');
       }
     })
-    .catch(function() {
-      setSyncStatus('error', 'Gagal koneksi — pakai data lokal');
+    .catch(function(e) {
+      setSyncStatus('error', 'Gagal koneksi: ' + e.message);
     });
 }
 
