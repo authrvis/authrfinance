@@ -459,23 +459,26 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
     <h1>OpEx &amp; <em>EBITDA Input</em></h1>
   </div>
 
-  <div class="alert warn"><strong>Cara Pakai</strong>Input estimasi biaya operasional per bulan di sini. Angka ini dipakai untuk menghitung EBITDA di tab P&L. Data ini hanya tersimpan di browser ini — tidak sync ke Google Sheets (karena bersifat estimasi, bukan data akuntansi).</div>
+  <div class="alert green"><strong>Data ini tersync ke Google Sheets</strong>Saldo dan biaya operasional tersimpan ke Sheets — bisa diakses tim dari device mana aja. Update angka lalu klik "Simpan & Sync".</div>
 
-  <div class="sec-lbl">Komponen Biaya per Bulan</div>
   <div class="sec-lbl">Saldo Rekening</div>
   <div class="opex-grid">
-    <div class="opex-card"><div class="opex-lbl">Saldo Rekening (Rp)</div><input class="opex-inp" id="opSaldo" type="number" placeholder="382000000" oninput="saveOpex();saveToSheets();renderAllAnalytics()"></div>
-    <div class="opex-card"><div class="opex-lbl">Per Tanggal / Keterangan</div><input class="opex-inp" id="opSaldoLabel" type="text" placeholder="Maret 2026" oninput="saveOpex();saveToSheets();renderAllAnalytics()"></div>
+    <div class="opex-card"><div class="opex-lbl">Saldo Rekening (Rp)</div><input class="opex-inp" id="opSaldo" type="number" placeholder="382000000" oninput="saveOpex();renderAllAnalytics()"></div>
+    <div class="opex-card"><div class="opex-lbl">Per Tanggal / Keterangan</div><input class="opex-inp" id="opSaldoLabel" type="text" placeholder="Maret 2026" oninput="saveOpex();renderAllAnalytics()"></div>
   </div>
 
   <div class="sec-lbl">Komponen Biaya per Bulan</div>
   <div class="opex-grid">
-    <div class="opex-card"><div class="opex-lbl">Salary / Bulan (Rp)</div><input class="opex-inp" id="opSalary" type="number" placeholder="23000000" oninput="saveOpex();saveToSheets();renderAllAnalytics()"></div>
-    <div class="opex-card"><div class="opex-lbl">Komisi Owner / Bulan (Rp)</div><input class="opex-inp" id="opOwner" type="number" placeholder="0" oninput="saveOpex();saveToSheets();renderAllAnalytics()"></div>
-    <div class="opex-card"><div class="opex-lbl">Komisi Sales / Bulan (Rp)</div><input class="opex-inp" id="opSales" type="number" placeholder="0" oninput="saveOpex();saveToSheets();renderAllAnalytics()"></div>
-    <div class="opex-card"><div class="opex-lbl">Sewa Kantor / Bulan (Rp)</div><input class="opex-inp" id="opSewa" type="number" placeholder="0" oninput="saveOpex();saveToSheets();renderAllAnalytics()"></div>
-    <div class="opex-card"><div class="opex-lbl">Operasional Lain / Bulan (Rp)</div><input class="opex-inp" id="opLain" type="number" placeholder="7000000" oninput="saveOpex();saveToSheets();renderAllAnalytics()"></div>
-    <div class="opex-card"><div class="opex-lbl">Jumlah Bulan (untuk kalkulasi)</div><input class="opex-inp" id="opMonths" type="number" placeholder="3" min="1" max="24" oninput="saveOpex();saveToSheets();renderAllAnalytics()"></div>
+    <div class="opex-card"><div class="opex-lbl">Salary / Bulan (Rp)</div><input class="opex-inp" id="opSalary" type="number" placeholder="23000000" oninput="saveOpex();renderAllAnalytics()"></div>
+    <div class="opex-card"><div class="opex-lbl">Komisi Owner / Bulan (Rp)</div><input class="opex-inp" id="opOwner" type="number" placeholder="0" oninput="saveOpex();renderAllAnalytics()"></div>
+    <div class="opex-card"><div class="opex-lbl">Komisi Sales / Bulan (Rp)</div><input class="opex-inp" id="opSales" type="number" placeholder="0" oninput="saveOpex();renderAllAnalytics()"></div>
+    <div class="opex-card"><div class="opex-lbl">Sewa Kantor / Bulan (Rp)</div><input class="opex-inp" id="opSewa" type="number" placeholder="0" oninput="saveOpex();renderAllAnalytics()"></div>
+    <div class="opex-card"><div class="opex-lbl">Operasional Lain / Bulan (Rp)</div><input class="opex-inp" id="opLain" type="number" placeholder="7000000" oninput="saveOpex();renderAllAnalytics()"></div>
+    <div class="opex-card"><div class="opex-lbl">Jumlah Bulan (untuk kalkulasi)</div><input class="opex-inp" id="opMonths" type="number" placeholder="3" min="1" max="24" oninput="saveOpex();renderAllAnalytics()"></div>
+  </div>
+
+  <div style="margin-bottom:1.5rem">
+    <button class="btn pr" onclick="saveOpex();saveToSheets();">↑ Simpan & Sync ke Google Sheets</button>
   </div>
 
   <div class="dsh-grid">
