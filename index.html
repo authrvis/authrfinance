@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finance Dashboard — PT Solusi Tata Persepsi</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0f0e0c;--ink2:#3a3830;--ink3:#7a7568;--ink4:#b0a99f;
+  --paper:#f7f4ef;--paper2:#efeae1;--paper3:#e5dfd4;--paper4:#d8d0c4;
+  --green:#1a4d2e;--green2:#2d7a4f;--greenl:#d4ead9;--greens:#e8f5ec;
+  --red:#8b2020;--redl:#f5dada;
+  --warn:#7a4f00;--warnl:#faecd4;
+  --gold:#b8860b;--goldl:#fdf3d0;
+  --border:#d0c9bc;
+  --serif:'DM Serif Display',serif;
+  --sans:'Instrument Sans',sans-serif;
+  --mono:'DM Mono',monospace;
+  --radius:3px;
+  --sb:200px;
+}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.6;font-size:14px}
+
+/* ===== LAYOUT ===== */
+.app-shell{display:grid;grid-template-columns:var(--sb) 1fr;min-height:100vh}
+.sidebar{background:var(--ink);color:#fff;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sb-top{padding:1.5rem 1.25rem 1rem;border-bottom:1px solid rgba(255,255,255,.08)}
+.sb-eyebrow{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:.3rem}
+.sb-title{font-family:var(--serif);font-size:1.1rem;line-height:1.2;color:#fff}
+.sb-title em{font-style:italic;color:rgba(255,255,255,.5)}
+.sb-nav{flex:1;padding:.75rem 0}
+.sb-section{font-family:var(--mono);font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.25);padding:.65rem 1.25rem .25rem}
+.sb-link{display:flex;align-items:center;gap:.55rem;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:rgba(255,255,255,.5);padding:.5rem 1.25rem;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:all .15s}
+.sb-link:hover{color:#fff;background:rgba(255,255,255,.06)}
+.sb-link.active{color:#fff;background:var(--green)}
+.sb-link .ico{font-size:12px;flex-shrink:0}
+.sb-bottom{padding:1rem 1.25rem;border-top:1px solid rgba(255,255,255,.08)}
+.sync-pill{display:flex;align-items:center;gap:.45rem;font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.4);margin-bottom:.6rem}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.2);flex-shrink:0;transition:background .3s}
+.sync-dot.ok{background:var(--green2)}
+.sync-dot.loading{background:var(--gold);animation:pulse .8s ease-in-out infinite}
+.sync-dot.error{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.sb-syncbtn{width:100%;font-family:var(--mono);font-size:9px;letter-spacing:.05em;padding:.4rem;border:1px solid rgba(255,255,255,.15);background:none;color:rgba(255,255,255,.5);cursor:pointer;margin-bottom:3px;border-radius:var(--radius)}
+.sb-syncbtn:hover{background:rgba(255,255,255,.08);color:#fff}
+.sb-lastSync{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.25);margin-top:.3rem}
+
+.main-area{min-width:0;display:flex;flex-direction:column}
+.panel{display:none;padding:2rem 2rem 5rem;flex:1}
+.panel.active{display:block}
+
+/* ===== ORIGINAL TRACKER STYLES (untouched) ===== */
+.hdr{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:1.5rem;border-bottom:2px solid var(--ink);margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
+.hdr-brand .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3);margin-bottom:.35rem}
+.hdr-brand h1{font-family:var(--serif);font-size:clamp(1.6rem,3vw,2.4rem);font-weight:400;line-height:1.1}
+.hdr-brand h1 em{font-style:italic;color:var(--green2)}
+.hdr-right{display:flex;flex-direction:column;align-items:flex-end;gap:.5rem}
+.hdr-actions{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:flex-end}
+.conflict-banner{display:none;background:var(--warnl);border:1px solid var(--gold);color:var(--warn);padding:.75rem 1rem;font-size:13px;margin-bottom:1rem;align-items:center;gap:1rem;flex-wrap:wrap}
+.conflict-banner.open{display:flex}
+.sumgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:2rem}
+.scard{background:var(--paper);padding:1.1rem 1.25rem}
+.scard.dk{background:var(--ink)}
+.scard.gn{background:var(--green)}
+.slbl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:.3rem}
+.scard.dk .slbl,.scard.gn .slbl{color:rgba(255,255,255,.45)}
+.sval{font-family:var(--serif);font-size:1.55rem;color:var(--ink);line-height:1;margin-bottom:.2rem}
+.scard.dk .sval,.scard.gn .sval{color:#fff}
+.snote{font-size:11px;color:var(--ink3)}
+.scard.dk .snote,.scard.gn .snote{color:rgba(255,255,255,.45)}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem}
+.toolbar-left{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+.filter-sel{font-family:var(--mono);font-size:11px;padding:.4rem .75rem;border:1px solid var(--border);background:var(--paper);color:var(--ink);cursor:pointer;outline:none}
+.search-inp{font-family:var(--mono);font-size:11px;padding:.4rem .75rem;border:1px solid var(--border);background:var(--paper);color:var(--ink);width:180px;outline:none}
+.search-inp:focus{border-color:var(--green2)}
+.search-inp::placeholder{color:var(--ink4)}
+.btn{padding:.55rem 1.1rem;border:1px solid;cursor:pointer;font-family:var(--sans);font-size:13px;font-weight:500;border-radius:var(--radius);transition:all .15s;white-space:nowrap}
+.btn.pr{background:var(--green);color:#fff;border-color:var(--green)}
+.btn.pr:hover{background:var(--green2)}
+.btn.ou{background:none;color:var(--ink);border-color:var(--border)}
+.btn.ou:hover{background:var(--paper2)}
+.btn.pdf{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.pdf:hover{background:var(--ink2)}
+.btn.sm{font-size:11.5px;padding:.38rem .85rem}
+.btn.xs{font-size:11px;padding:.28rem .65rem}
+.btn.dn{background:none;color:var(--red);border-color:var(--red)}
+.btn.dn:hover{background:var(--redl)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.clist{display:grid;gap:.75rem}
+.ccard{border:1px solid var(--border);background:var(--paper);transition:border-color .15s}
+.ccard:hover{border-color:var(--ink4)}
+.chdr{padding:1rem 1.25rem;border-bottom:.5px solid transparent;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;cursor:pointer;user-select:none}
+.ccard.open .chdr{border-bottom-color:var(--border)}
+.chdr:hover{background:var(--paper2)}
+.chdr-left{flex:1;min-width:0}
+.cclient-name{font-weight:600;font-size:15px}
+.cproject{font-size:12px;color:var(--ink3);margin-top:2px}
+.cmeta{font-family:var(--mono);font-size:10px;color:var(--ink3);margin-top:5px;display:flex;gap:1rem;flex-wrap:wrap}
+.chdr-right{text-align:right;flex-shrink:0}
+.ctotal{font-family:var(--serif);font-size:1.35rem;line-height:1.1}
+.cmargin-pill{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:2px;margin-top:3px;display:inline-block}
+.cmargin-pill.good{background:var(--greenl);color:var(--green)}
+.cmargin-pill.warn{background:var(--warnl);color:var(--warn)}
+.cmargin-pill.bad{background:var(--redl);color:var(--red)}
+.cmargin-pill.na{background:var(--paper3);color:var(--ink3)}
+.cprog{height:3px;background:var(--paper3)}
+.cprogb{height:100%;background:var(--green2);transition:width .4s}
+.cbody{display:none;padding:1.25rem}
+.cbody.open{display:block}
+.ctabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:1.25rem;flex-wrap:wrap}
+.ctab{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:.45rem 1rem;cursor:pointer;border:none;background:none;color:var(--ink3);border-bottom:2.5px solid transparent;margin-bottom:-1px}
+.ctab:hover{color:var(--ink)}
+.ctab.active{color:var(--green2);border-bottom-color:var(--green2)}
+.ctabpanel{display:none}
+.ctabpanel.active{display:block}
+.ttable{width:100%;border-collapse:collapse;font-size:13px}
+.ttable th{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);padding:.4rem .75rem;text-align:left;border-bottom:1px solid var(--border);font-weight:400}
+.ttable th.r{text-align:right}
+.ttable td{padding:.6rem .75rem;border-bottom:.5px solid var(--border);vertical-align:middle}
+.ttable td.mono{font-family:var(--mono);font-size:12px}
+.ttable td.r{text-align:right;font-family:var(--mono);font-size:12px}
+.ttable tr:last-child td{border-bottom:none}
+.ttable tr.paid-row td{opacity:.55}
+.badge{display:inline-block;font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:2px;white-space:nowrap}
+.badge.paid{background:var(--greenl);color:var(--green)}
+.badge.outs{background:var(--warnl);color:var(--warn)}
+.badge.over{background:var(--redl);color:var(--red)}
+.pnl-box{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);margin-top:1rem}
+.pnl-item{background:var(--paper2);padding:.85rem 1rem}
+.pnl-item.dark{background:var(--ink)}
+.pnl-item.green{background:var(--green)}
+.pnl-item.warn-bg{background:var(--warn)}
+.pnl-item.red-bg{background:var(--red)}
+.pnl-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);margin-bottom:.25rem}
+.pnl-item.dark .pnl-lbl,.pnl-item.green .pnl-lbl,.pnl-item.warn-bg .pnl-lbl,.pnl-item.red-bg .pnl-lbl{color:rgba(255,255,255,.5)}
+.pnl-val{font-family:var(--serif);font-size:1.3rem;line-height:1;color:var(--ink)}
+.pnl-item.dark .pnl-val,.pnl-item.green .pnl-val,.pnl-item.warn-bg .pnl-val,.pnl-item.red-bg .pnl-val{color:#fff}
+.pnl-sub{font-size:11px;color:var(--ink3);margin-top:.2rem}
+.pnl-item.dark .pnl-sub,.pnl-item.green .pnl-sub,.pnl-item.warn-bg .pnl-sub,.pnl-item.red-bg .pnl-sub{color:rgba(255,255,255,.5)}
+.add-form{border:1.5px dashed var(--border);padding:1.5rem;margin-bottom:1.5rem;display:none;background:var(--paper)}
+.add-form.open{display:block}
+.fgrid2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem}
+.fgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:.75rem}
+.fl label{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);display:block;margin-bottom:.3rem}
+.fl input,.fl select,.fl textarea{width:100%;border:1px solid var(--border);background:var(--paper);padding:.45rem .7rem;font-family:var(--sans);font-size:13px;color:var(--ink);outline:none;border-radius:var(--radius)}
+.fl input:focus,.fl select:focus,.fl textarea:focus{border-color:var(--green2)}
+.moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;align-items:center;justify-content:center;padding:1rem}
+.moverlay.open{display:flex}
+.mbox{background:var(--paper);width:100%;max-width:680px;max-height:92vh;overflow-y:auto;border:1px solid var(--border)}
+.mhead{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--paper);z-index:1}
+.mtitle{font-family:var(--serif);font-size:1.25rem}
+.mclose{background:none;border:none;font-size:24px;cursor:pointer;color:var(--ink3);line-height:1;padding:0 6px}
+.mbody{padding:1.5rem}
+.msec{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);border-top:.5px solid var(--border);padding-top:.75rem;margin:1.25rem 0 .75rem}
+.msec.first{border-top:none;margin-top:0}
+.mfoot{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;gap:.75rem;justify-content:flex-end;position:sticky;bottom:0;background:var(--paper)}
+.termin-table{width:100%;border-collapse:collapse;margin-bottom:.5rem}
+.termin-table th{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);padding:.35rem .5rem;border-bottom:1px solid var(--border);text-align:left;font-weight:400}
+.termin-table td{padding:.35rem .5rem;border-bottom:.5px solid var(--border);vertical-align:middle}
+.termin-table tr:last-child td{border-bottom:none}
+.termin-table input,.termin-table select{width:100%;border:1px solid var(--border);padding:.3rem .45rem;font-size:12px;font-family:var(--mono);background:var(--paper);color:var(--ink);outline:none}
+.termin-table input:focus,.termin-table select:focus{border-color:var(--green2)}
+.cat-list{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.75rem}
+.cat-pill{display:inline-flex;align-items:center;gap:.35rem;background:var(--paper3);border:1px solid var(--border);padding:3px 10px;font-family:var(--mono);font-size:11px;border-radius:2px}
+.cat-pill .remove{background:none;border:none;color:var(--ink3);cursor:pointer;font-size:14px;line-height:1;padding:0;margin-left:.2rem}
+.cat-pill .remove:hover{color:var(--red)}
+.recap-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:1.5rem}
+.recap-table th{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);padding:.5rem .75rem;border-bottom:1.5px solid var(--ink);text-align:left;font-weight:400}
+.recap-table th.r{text-align:right}
+.recap-table td{padding:.65rem .75rem;border-bottom:.5px solid var(--border)}
+.recap-table td.r{text-align:right;font-family:var(--mono);font-size:12px}
+.recap-table tr.total-row td{border-top:1.5px solid var(--ink);font-weight:600;border-bottom:2px solid var(--ink)}
+.main-tabs{display:flex;border-bottom:2px solid var(--ink);margin-bottom:1.75rem}
+.main-tab{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:.65rem 1.5rem;cursor:pointer;border:none;background:none;color:var(--ink3);border-bottom:3px solid transparent;margin-bottom:-2px;transition:color .15s}
+.main-tab:hover{color:var(--ink)}
+.main-tab.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:500}
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--ink3)}
+.empty-state h3{font-family:var(--serif);font-size:1.4rem;margin-bottom:.5rem;color:var(--ink2)}
+.empty-state p{font-size:13px;margin-bottom:1.25rem}
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(247,244,239,.85);z-index:500;align-items:center;justify-content:center;flex-direction:column;gap:1rem}
+.loading-overlay.open{display:flex}
+.loading-text{font-family:var(--mono);font-size:12px;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase}
+.spinner{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--green2);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pdf-opt{display:flex;align-items:flex-start;gap:.75rem;padding:.85rem 1rem;border:1.5px solid var(--border);cursor:pointer;transition:border-color .15s;margin-bottom:.5rem}
+.pdf-opt:hover,.pdf-opt.selected{border-color:var(--green2);background:var(--greens)}
+.pdf-opt-label{font-weight:600;font-size:13px}
+.pdf-opt-sub{font-size:12px;color:var(--ink3);margin-top:2px}
+.recap-view{display:none}
+.recap-view.open{display:block}
+.recap-month-select{display:flex;gap:.75rem;align-items:flex-end;margin-bottom:1.5rem;flex-wrap:wrap}
+
+/* ===== DASHBOARD / EBITDA / CASHFLOW STYLES ===== */
+.page-hdr{border-bottom:2px solid var(--ink);padding-bottom:1.25rem;margin-bottom:2rem}
+.page-hdr .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3);margin-bottom:.35rem}
+.page-hdr h1{font-family:var(--serif);font-size:clamp(1.5rem,2.5vw,2rem);font-weight:400;line-height:1.1}
+.page-hdr h1 em{font-style:italic;color:var(--green2)}
+.dsh-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:2rem}
+.dsh-card{background:var(--paper);padding:1.1rem 1.25rem}
+.dsh-card.dk{background:var(--ink)}
+.dsh-card.gn{background:var(--green)}
+.dsh-card.rd{background:var(--redl)}
+.dsh-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:.3rem}
+.dsh-card.dk .dsh-lbl,.dsh-card.gn .dsh-lbl{color:rgba(255,255,255,.45)}
+.dsh-val{font-family:var(--serif);font-size:1.45rem;color:var(--ink);line-height:1;margin-bottom:.2rem}
+.dsh-card.dk .dsh-val,.dsh-card.gn .dsh-val{color:#fff}
+.dsh-val.g{color:var(--green2)}.dsh-val.r{color:var(--red)}.dsh-val.gold{color:var(--gold)}
+.dsh-note{font-size:11px;color:var(--ink3)}
+.dsh-card.dk .dsh-note,.dsh-card.gn .dsh-note{color:rgba(255,255,255,.45)}
+.dsh-card.rd .dsh-lbl{color:var(--red)}.dsh-card.rd .dsh-val{color:var(--red)}.dsh-card.rd .dsh-note{color:var(--red);opacity:.7}
+
+.sec-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink3);border-top:.5px solid var(--border);padding-top:.6rem;margin-bottom:1rem;margin-top:2rem}
+.sec-lbl:first-child{border-top:none;margin-top:0}
+.sec h2{font-family:var(--serif);font-size:1.35rem;font-weight:400;margin-bottom:1.1rem}
+
+.dt{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:1.25rem}
+.dt thead tr{border-bottom:1.5px solid var(--ink)}
+.dt th{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);padding:.45rem .75rem;text-align:left;font-weight:400}
+.dt th.r,.dt td.r{text-align:right}
+.dt tbody tr{border-bottom:.5px solid var(--border)}
+.dt tbody tr:hover{background:var(--paper2)}
+.dt td{padding:.6rem .75rem;color:var(--ink2)}
+.dt td.mono{font-family:var(--mono);font-size:12px}
+.dt tfoot tr{border-top:1.5px solid var(--ink)}
+.dt tfoot td{padding:.6rem .75rem;font-weight:600;font-family:var(--mono);font-size:12px;color:var(--ink)}
+
+.alert{padding:.85rem 1rem;border-left:3px solid;font-size:13px;margin-bottom:.85rem;line-height:1.6}
+.alert.green{border-color:var(--green2);background:var(--greenl);color:var(--green)}
+.alert.red{border-color:var(--red);background:var(--redl);color:var(--red)}
+.alert.warn{border-color:var(--warn);background:var(--warnl);color:var(--warn)}
+.alert strong{font-weight:600;display:block;margin-bottom:.2rem}
+
+/* Waterfall */
+.wf-row{display:grid;grid-template-columns:190px 1fr 120px 55px;gap:.75rem;align-items:center;padding:.5rem 0;border-bottom:.5px solid var(--border)}
+.wf-lbl{font-size:13px;color:var(--ink2)}
+.wf-lbl.bold{font-weight:600;color:var(--ink)}
+.wf-lbl.indent{padding-left:1rem;color:var(--ink3);font-size:12px}
+.wf-bar-wrap{position:relative;height:14px;background:var(--paper3);border-radius:1px;overflow:hidden}
+.wf-bar{position:absolute;left:0;top:0;height:100%;border-radius:1px;transition:width .5s ease}
+.wf-bar.g{background:var(--green2)}.wf-bar.r{background:var(--red)}.wf-bar.gold{background:var(--gold)}
+.wf-val{font-family:var(--mono);font-size:12px;color:var(--ink2);text-align:right;white-space:nowrap}
+.wf-pct{font-family:var(--mono);font-size:11px;color:var(--ink3);text-align:right}
+
+/* Cashflow timeline */
+.cf-row{display:grid;grid-template-columns:90px 1fr 110px;gap:.75rem;align-items:center;padding:.5rem 0;border-bottom:.5px solid var(--border)}
+.cf-month{font-family:var(--mono);font-size:10px;color:var(--ink3);text-transform:uppercase}
+.cf-bar-wrap{position:relative;height:16px;background:var(--paper3);border-radius:1px;overflow:hidden}
+.cf-bar{position:absolute;left:0;top:0;height:100%;background:var(--green2);border-radius:1px}
+.cf-bar.empty{background:var(--red);opacity:.25;width:100%!important}
+.cf-amt{font-family:var(--mono);font-size:12px;color:var(--ink2);text-align:right;white-space:nowrap}
+.cf-amt.zero{color:var(--red)}.cf-amt.peak{font-weight:600;color:var(--green2)}
+
+/* OpEx inputs */
+.opex-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem;margin-bottom:1.25rem}
+.opex-card{background:var(--paper2);border:1px solid var(--border);padding:.85rem 1rem}
+.opex-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:.4rem}
+.opex-inp{width:100%;border:1px solid var(--border);background:var(--paper);padding:.4rem .65rem;font-family:var(--mono);font-size:13px;color:var(--ink);outline:none;border-radius:var(--radius)}
+.opex-inp:focus{border-color:var(--green2)}
+
+@media(max-width:900px){
+  .app-shell{grid-template-columns:1fr}
+  .sidebar{position:static;height:auto;flex-direction:row;flex-wrap:wrap}
+  .sb-top{padding:1rem}
+  .sb-nav{padding:.5rem;display:flex;flex-wrap:wrap;gap:.25rem}
+  .sb-section{display:none}
+  .sb-link{padding:.4rem .75rem;border-radius:var(--radius)}
+  .sb-bottom{width:100%;border-top:1px solid rgba(255,255,255,.08);padding:.75rem 1rem;display:flex;align-items:center;gap:.75rem}
+  .sb-syncbtn{width:auto}
+  .wf-row{grid-template-columns:140px 1fr 100px 45px}
+}
+@media(max-width:640px){
+  .fgrid2,.fgrid3{grid-template-columns:1fr 1fr}
+  .sumgrid{grid-template-columns:1fr 1fr}
+  .wf-row{grid-template-columns:120px 1fr 90px}
+  .wf-pct{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+<!-- ===== SIDEBAR ===== -->
+<div class="sidebar">
+  <div class="sb-top">
+    <div class="sb-eyebrow">Finance Dashboard</div>
+    <div class="sb-title">PT Solusi<br><em>Tata Persepsi</em></div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section">Overview</div>
+    <button class="sb-link active" id="nav-dashboard" onclick="showPanel('dashboard')"><span class="ico">📊</span> Dashboard</button>
+    <button class="sb-link" id="nav-ebitda" onclick="showPanel('ebitda')"><span class="ico">📈</span> P&amp;L &amp; EBITDA</button>
+    <button class="sb-link" id="nav-cashflow" onclick="showPanel('cashflow')"><span class="ico">💰</span> Cash Flow</button>
+    <div class="sb-section">Operasional</div>
+    <button class="sb-link" id="nav-tracker" onclick="showPanel('tracker')"><span class="ico">🧾</span> Invoice Tracker</button>
+    <button class="sb-link" id="nav-opex" onclick="showPanel('opex')"><span class="ico">📋</span> OpEx &amp; EBITDA Input</button>
+  </nav>
+  <div class="sb-bottom">
+    <div class="sync-pill"><div class="sync-dot loading" id="syncDot"></div><span id="syncText" style="flex:1">Menghubungkan...</span></div>
+    <button class="sb-syncbtn" onclick="manualSync()">↻ Sync Sheets</button>
+    <button class="sb-syncbtn" onclick="openImportModal()" style="margin-top:3px">↑ Import JSON</button>
+    <div class="sb-lastSync" id="lastSyncText"></div>
+  </div>
+</div>
+
+<!-- ===== MAIN AREA ===== -->
+<div class="main-area">
+
+<!-- ========== DASHBOARD ========== -->
+<div class="panel active" id="panel-dashboard">
+  <div class="page-hdr">
+    <div class="eyebrow">Laporan Keuangan Internal</div>
+    <h1>Dashboard <em>Eksekutif</em></h1>
+  </div>
+
+  <div class="dsh-grid">
+    <div class="dsh-card dk"><div class="dsh-lbl">Total Invoice</div><div class="dsh-val" id="dTotalInv">—</div><div class="dsh-note" id="dTotalInvNote">0 klien</div></div>
+    <div class="dsh-card"><div class="dsh-lbl">Sudah Dibayar</div><div class="dsh-val gold" id="dTotalPaid">—</div><div class="dsh-note" id="dTotalPaidNote">0% collected</div></div>
+    <div class="dsh-card"><div class="dsh-lbl">AR Outstanding</div><div class="dsh-val" id="dAR">—</div><div class="dsh-note" id="dARNote">— termin</div></div>
+    <div class="dsh-card"><div class="dsh-lbl">Total COGS</div><div class="dsh-val r" id="dCOGS">—</div><div class="dsh-note" id="dCOGSNote">— item</div></div>
+    <div class="dsh-card gn"><div class="dsh-lbl">Gross Profit</div><div class="dsh-val" id="dGP">—</div><div class="dsh-note" id="dGPNote">—% margin</div></div>
+    <div class="dsh-card" id="dEBITDACard"><div class="dsh-lbl">EBITDA</div><div class="dsh-val" id="dEBITDA">—</div><div class="dsh-note" id="dEBITDANote">GP − OpEx</div></div>
+    <div class="dsh-card gn"><div class="dsh-lbl">Saldo Rekening</div><div class="dsh-val" id="dSaldo">—</div><div class="dsh-note" id="dSaldoNote">—</div></div>
+    <div class="dsh-card"><div class="dsh-lbl">Runway</div><div class="dsh-val g" id="dRunway">—</div><div class="dsh-note">Tanpa revenue baru</div></div>
+  </div>
+
+  <div id="dshAlerts"></div>
+
+  <div class="sec-lbl">Semua Klien — Ringkasan</div>
+  <table class="dt">
+    <thead><tr><th>Klien</th><th>Project</th><th>Bulan</th><th class="r">Invoice</th><th class="r">Dibayar</th><th class="r">COGS</th><th class="r">Gross Profit</th><th class="r">Margin</th></tr></thead>
+    <tbody id="dshClientRows"></tbody>
+    <tfoot><tr><td colspan="3">Total</td><td class="r" id="dshFtInv">—</td><td class="r" id="dshFtPaid">—</td><td class="r" id="dshFtCogs">—</td><td class="r" id="dshFtGP">—</td><td class="r" id="dshFtMargin">—</td></tr></tfoot>
+  </table>
+</div>
+
+<!-- ========== P&L & EBITDA ========== -->
+<div class="panel" id="panel-ebitda">
+  <div class="page-hdr">
+    <div class="eyebrow">Profitabilitas</div>
+    <h1>P&amp;L &amp; <em>EBITDA</em></h1>
+  </div>
+
+  <div class="sec-lbl">EBITDA Live — dari Invoice Tracker</div>
+  <div class="alert warn"><strong>Cara Membaca</strong>EBITDA dihitung dari revenue yang sudah terkumpul (termin lunas) dikurangi COGS yang tercatat di tracker, lalu dikurangi total OpEx yang kamu input di tab "OpEx & EBITDA Input". Makin lengkap data COGS dan OpEx-mu, makin akurat angkanya.</div>
+  <div id="wfContainer" style="margin-bottom:2rem"></div>
+  <div class="dsh-grid" id="ebitdaCards">
+    <div class="dsh-card dk"><div class="dsh-lbl">Revenue Terkumpul</div><div class="dsh-val" id="eRev">—</div><div class="dsh-note">Termin lunas</div></div>
+    <div class="dsh-card"><div class="dsh-lbl">Total COGS</div><div class="dsh-val r" id="eCOGS">—</div><div class="dsh-note" id="eCOGSNote">— item</div></div>
+    <div class="dsh-card gn"><div class="dsh-lbl">Gross Profit</div><div class="dsh-val" id="eGP">—</div><div class="dsh-note" id="eGPNote">—% margin</div></div>
+    <div class="dsh-card"><div class="dsh-lbl">OpEx (input)</div><div class="dsh-val r" id="eOpex">—</div><div class="dsh-note" id="eOpexNote">— bulan</div></div>
+    <div class="dsh-card" id="eEBITDACard"><div class="dsh-lbl">EBITDA</div><div class="dsh-val" id="eEBITDA">—</div><div class="dsh-note" id="eEBITDANote">—</div></div>
+    <div class="dsh-card"><div class="dsh-lbl">EBITDA Margin</div><div class="dsh-val" id="eMargin">—</div><div class="dsh-note">Dari revenue terkumpul</div></div>
+  </div>
+
+  <div class="sec-lbl" style="margin-top:2rem">Rekap P&L per Klien</div>
+  <table class="dt">
+    <thead><tr><th>Klien</th><th>Bulan</th><th class="r">Invoice</th><th class="r">Dibayar</th><th class="r">COGS</th><th class="r">Gross Profit</th><th class="r">Margin</th><th>vs Target</th></tr></thead>
+    <tbody id="plClientRows"></tbody>
+    <tfoot><tr><td colspan="2">Total</td><td class="r" id="plFtInv">—</td><td class="r" id="plFtPaid">—</td><td class="r" id="plFtCogs">—</td><td class="r" id="plFtGP">—</td><td class="r" id="plFtMargin">—</td><td></td></tr></tfoot>
+  </table>
+</div>
+
+<!-- ========== CASH FLOW ========== -->
+<div class="panel" id="panel-cashflow">
+  <div class="page-hdr">
+    <div class="eyebrow">Arus Kas</div>
+    <h1>Cash Flow <em>Proyeksi</em></h1>
+  </div>
+
+  <div class="alert warn"><strong>Proyeksi dari Due Date Termin</strong>Timeline di bawah dibuat otomatis dari due date termin yang belum lunas di Invoice Tracker. Kalau due date tidak diisi, termin tidak akan muncul di sini. Update due date di tracker untuk memperbarui proyeksi ini.</div>
+
+  <div class="sec-lbl">Timeline Penerimaan — Termin Outstanding</div>
+  <div id="cfTimeline" style="margin-bottom:2rem"></div>
+
+  <div class="dsh-grid">
+    <div class="dsh-card dk"><div class="dsh-lbl">Total AR Outstanding</div><div class="dsh-val" id="cfAR">—</div><div class="dsh-note">Belum terkumpul</div></div>
+    <div class="dsh-card gn"><div class="dsh-lbl">Sudah Terkumpul</div><div class="dsh-val" id="cfPaid">—</div><div class="dsh-note">Termin lunas</div></div>
+    <div class="dsh-card"><div class="dsh-lbl">Termin Overdue</div><div class="dsh-val r" id="cfOverdue">—</div><div class="dsh-note">Melewati due date</div></div>
+    <div class="dsh-card"><div class="dsh-lbl">Jatuh Tempo 30 Hari</div><div class="dsh-val gold" id="cf30">—</div><div class="dsh-note">Perlu follow-up</div></div>
+  </div>
+
+  <div class="sec-lbl" style="margin-top:1.5rem">Detail Termin Outstanding</div>
+  <table class="dt">
+    <thead><tr><th>Klien</th><th>Termin</th><th>Due Date</th><th class="r">Nilai</th><th>Status</th></tr></thead>
+    <tbody id="cfTerminRows"></tbody>
+  </table>
+</div>
+
+<!-- ========== INVOICE TRACKER (original) ========== -->
+<div class="panel" id="panel-tracker">
+  <div class="hdr">
+    <div class="hdr-brand">
+      <div class="eyebrow">Finance Tracker</div>
+      <h1>Invoice &amp; <em>COGS</em> Tracker</h1>
+    </div>
+    <div class="hdr-right">
+      <div id="hdrMeta" style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);line-height:2;text-align:right"></div>
+      <div class="hdr-actions">
+        <button class="btn ou sm" onclick="openCatModal()">⚙ Kategori COGS</button>
+        <button class="btn ou sm" onclick="openPdfModal()">↓ Export PDF</button>
+        <button class="btn pr sm" onclick="openAddModal()">+ Tambah Klien</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="conflict-banner" id="conflictBanner">
+    <span>⚠ Ada perubahan baru dari anggota tim lain.</span>
+    <button class="btn xs ou" onclick="loadFromSheets(true)">Muat Data Terbaru</button>
+    <button class="btn xs" style="border-color:var(--warn);color:var(--warn);background:none" onclick="dismissConflict()">Abaikan</button>
+  </div>
+
+  <div class="sumgrid">
+    <div class="scard dk"><div class="slbl">Total Invoice</div><div class="sval" id="sTotalInv">Rp 0</div><div class="snote" id="sTotalInvNote">0 klien</div></div>
+    <div class="scard"><div class="slbl">Sudah Dibayar</div><div class="sval" id="sTotalPaid">Rp 0</div><div class="snote" id="sTotalPaidNote">0% collected</div></div>
+    <div class="scard"><div class="slbl">Belum Dibayar</div><div class="sval" id="sTotalAR">Rp 0</div><div class="snote" id="sTotalARNote">0 outstanding</div></div>
+    <div class="scard"><div class="slbl">Total COGS</div><div class="sval" id="sTotalCogs">Rp 0</div><div class="snote" id="sTotalCogsNote">0 item</div></div>
+    <div class="scard gn"><div class="slbl">Gross Profit</div><div class="sval" id="sGrossProfit">Rp 0</div><div class="snote" id="sMarginNote">0% margin</div></div>
+  </div>
+
+  <div class="main-tabs">
+    <button class="main-tab active" id="tabBtnClients" onclick="switchMainTab('clients')">Semua Klien</button>
+    <button class="main-tab" id="tabBtnRecap" onclick="switchMainTab('recap')">Rekap Bulanan</button>
+  </div>
+
+  <div id="clientsView">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <input class="search-inp" type="text" placeholder="Cari klien..." id="searchInp" oninput="renderClients()">
+        <select class="filter-sel" id="filterMonth" onchange="renderClients()">
+          <option value="">Semua Bulan</option>
+        </select>
+        <select class="filter-sel" id="filterStatus" onchange="renderClients()">
+          <option value="">Semua Status</option>
+          <option value="outstanding">Ada Outstanding</option>
+          <option value="lunas">Lunas</option>
+        </select>
+      </div>
+    </div>
+    <div class="clist" id="clientList"></div>
+  </div>
+
+  <div id="recapView" class="recap-view">
+    <div class="recap-month-select">
+      <div class="fl"><label>Pilih Bulan</label><select id="recapMonthSel" onchange="renderRecap()" style="font-family:var(--mono);font-size:12px;padding:.45rem .75rem;border:1px solid var(--border);background:var(--paper);outline:none;min-width:180px"></select></div>
+      <button class="btn ou sm" onclick="exportRecapPdf()">↓ Export PDF Rekap Ini</button>
+    </div>
+    <div id="recapContent"></div>
+  </div>
+</div>
+
+<!-- ========== OPEX INPUT ========== -->
+<div class="panel" id="panel-opex">
+  <div class="page-hdr">
+    <div class="eyebrow">Biaya Operasional</div>
+    <h1>OpEx &amp; <em>EBITDA Input</em></h1>
+  </div>
+
+  <div class="alert warn"><strong>Cara Pakai</strong>Input estimasi biaya operasional per bulan di sini. Angka ini dipakai untuk menghitung EBITDA di tab P&L. Data ini hanya tersimpan di browser ini — tidak sync ke Google Sheets (karena bersifat estimasi, bukan data akuntansi).</div>
+
+  <div class="sec-lbl">Komponen Biaya per Bulan</div>
+  <div class="sec-lbl">Saldo Rekening</div>
+  <div class="opex-grid">
+    <div class="opex-card"><div class="opex-lbl">Saldo Rekening (Rp)</div><input class="opex-inp" id="opSaldo" type="number" placeholder="382000000" oninput="saveOpex();renderAllAnalytics()"></div>
+    <div class="opex-card"><div class="opex-lbl">Per Tanggal / Keterangan</div><input class="opex-inp" id="opSaldoLabel" type="text" placeholder="Maret 2026" oninput="saveOpex();renderAllAnalytics()"></div>
+  </div>
+
+  <div class="sec-lbl">Komponen Biaya per Bulan</div>
+  <div class="opex-grid">
+    <div class="opex-card"><div class="opex-lbl">Salary / Bulan (Rp)</div><input class="opex-inp" id="opSalary" type="number" placeholder="23000000" oninput="saveOpex();renderAllAnalytics()"></div>
+    <div class="opex-card"><div class="opex-lbl">Komisi Owner / Bulan (Rp)</div><input class="opex-inp" id="opOwner" type="number" placeholder="0" oninput="saveOpex();renderAllAnalytics()"></div>
+    <div class="opex-card"><div class="opex-lbl">Komisi Sales / Bulan (Rp)</div><input class="opex-inp" id="opSales" type="number" placeholder="0" oninput="saveOpex();renderAllAnalytics()"></div>
+    <div class="opex-card"><div class="opex-lbl">Sewa Kantor / Bulan (Rp)</div><input class="opex-inp" id="opSewa" type="number" placeholder="0" oninput="saveOpex();renderAllAnalytics()"></div>
+    <div class="opex-card"><div class="opex-lbl">Operasional Lain / Bulan (Rp)</div><input class="opex-inp" id="opLain" type="number" placeholder="7000000" oninput="saveOpex();renderAllAnalytics()"></div>
+    <div class="opex-card"><div class="opex-lbl">Jumlah Bulan (untuk kalkulasi)</div><input class="opex-inp" id="opMonths" type="number" placeholder="3" min="1" max="24" oninput="saveOpex();renderAllAnalytics()"></div>
+  </div>
+
+  <div class="dsh-grid">
+    <div class="dsh-card gn"><div class="dsh-lbl">Saldo Rekening</div><div class="dsh-val" id="opSaldoDisplay">—</div><div class="dsh-note" id="opSaldoLabelDisplay">—</div></div>
+    <div class="dsh-card"><div class="dsh-lbl">Runway</div><div class="dsh-val g" id="opRunway">—</div><div class="dsh-note">Tanpa revenue baru</div></div>
+    <div class="dsh-card"><div class="dsh-lbl">Total OpEx / Bulan</div><div class="dsh-val r" id="opTotalMonth">—</div><div class="dsh-note">Semua komponen</div></div>
+    <div class="dsh-card"><div class="dsh-lbl">Total OpEx Periode</div><div class="dsh-val r" id="opTotalPeriod">—</div><div class="dsh-note" id="opPeriodNote">x bulan</div></div>
+    <div class="dsh-card gn"><div class="dsh-lbl">Gross Profit (tracker)</div><div class="dsh-val" id="opGP">—</div><div class="dsh-note">Dari revenue terkumpul</div></div>
+    <div class="dsh-card" id="opEBITDACard"><div class="dsh-lbl">EBITDA Estimasi</div><div class="dsh-val" id="opEBITDA">—</div><div class="dsh-note" id="opEBITDANote">GP − OpEx periode</div></div>
+  </div>
+</div>
+
+</div><!-- /main-area -->
+</div><!-- /app-shell -->
+
+<!-- ===== MODALS (original) ===== -->
+<div class="moverlay" id="clientModal">
+  <div class="mbox">
+    <div class="mhead">
+      <span class="mtitle" id="modalTitle">Tambah Klien Baru</span>
+      <button class="mclose" onclick="closeModal('clientModal')">×</button>
+    </div>
+    <div class="mbody">
+      <input type="hidden" id="editId">
+      <div class="msec first">Informasi Klien</div>
+      <div class="fgrid2">
+        <div class="fl"><label>Nama Klien *</label><input type="text" id="fClient" placeholder="Nama perusahaan/individu"></div>
+        <div class="fl"><label>Nama Project</label><input type="text" id="fProject" placeholder="Nama project/job"></div>
+      </div>
+      <div class="fgrid3">
+        <div class="fl"><label>Bulan *</label><select id="fMonth"><option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option><option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option><option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option></select></div>
+        <div class="fl"><label>Tahun *</label><input type="number" id="fYear" value="2025" min="2020" max="2035"></div>
+        <div class="fl"><label>Total Invoice (Rp) *</label><input type="number" id="fTotal" placeholder="0" min="0"></div>
+      </div>
+      <div class="fgrid2">
+        <div class="fl"><label>PIC</label><input type="text" id="fPic" placeholder="Nama PIC"></div>
+        <div class="fl"><label>Margin Target (%)</label><input type="number" id="fMarginTarget" placeholder="contoh: 40" min="0" max="100"></div>
+      </div>
+      <div class="fl" style="margin-bottom:.75rem"><label>Catatan</label><textarea id="fNotes" rows="2" placeholder="Catatan tambahan..."></textarea></div>
+      <div class="msec">Termin Pembayaran</div>
+      <table class="termin-table" id="terminTable">
+        <thead><tr><th>#</th><th>Nama Termin</th><th>Nilai (Rp)</th><th>Due Date</th><th>Status</th><th></th></tr></thead>
+        <tbody id="terminBody"></tbody>
+      </table>
+      <button class="btn ou xs" onclick="addTermin()" style="margin-bottom:.5rem">+ Tambah Termin</button>
+    </div>
+    <div class="mfoot">
+      <button class="btn ou" onclick="closeModal('clientModal')">Batal</button>
+      <button class="btn pr" onclick="saveClient()">Simpan & Sync</button>
+    </div>
+  </div>
+</div>
+
+<div class="moverlay" id="cogsModal">
+  <div class="mbox" style="max-width:500px">
+    <div class="mhead">
+      <span class="mtitle">Tambah Biaya COGS</span>
+      <button class="mclose" onclick="closeModal('cogsModal')">×</button>
+    </div>
+    <div class="mbody">
+      <p style="font-size:13px;color:var(--ink3);margin-bottom:1rem">Klien: <strong id="cogsCLientName">—</strong></p>
+      <input type="hidden" id="cogsCid">
+      <div class="fgrid2">
+        <div class="fl"><label>Nama Biaya *</label><input type="text" id="cogsFName" placeholder="contoh: Fee Fotografer"></div>
+        <div class="fl"><label>Kategori</label><select id="cogsFCat"></select></div>
+      </div>
+      <div class="fgrid2">
+        <div class="fl"><label>Jumlah (Rp) *</label><input type="number" id="cogsFAmount" placeholder="0" min="0"></div>
+        <div class="fl"><label>Tanggal</label><input type="date" id="cogsFDate"></div>
+      </div>
+      <div class="fl"><label>Keterangan</label><input type="text" id="cogsFNote" placeholder="Opsional..."></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn ou" onclick="closeModal('cogsModal')">Batal</button>
+      <button class="btn pr" onclick="saveCogs()">Simpan & Sync</button>
+    </div>
+  </div>
+</div>
+
+<div class="moverlay" id="catModal">
+  <div class="mbox" style="max-width:500px">
+    <div class="mhead">
+      <span class="mtitle">Kelola Kategori COGS</span>
+      <button class="mclose" onclick="closeModal('catModal')">×</button>
+    </div>
+    <div class="mbody">
+      <p style="font-size:13px;color:var(--ink3);margin-bottom:1rem">Kategori ini berlaku untuk semua anggota tim.</p>
+      <div class="cat-list" id="catList"></div>
+      <div style="display:flex;gap:.5rem;margin-top:.5rem">
+        <input type="text" id="newCatInp" style="flex:1;border:1px solid var(--border);padding:.45rem .7rem;font-size:13px;background:var(--paper);color:var(--ink);outline:none;border-radius:var(--radius)" placeholder="Nama kategori baru..." onkeydown="if(event.key==='Enter')addCategory()">
+        <button class="btn ou sm" onclick="addCategory()">+ Tambah</button>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn ou" onclick="closeModal('catModal')">Batal</button>
+      <button class="btn pr" onclick="saveCats()">Simpan & Sync</button>
+    </div>
+  </div>
+</div>
+
+<div class="moverlay" id="pdfModal">
+  <div class="mbox" style="max-width:520px">
+    <div class="mhead">
+      <span class="mtitle">Export Laporan PDF</span>
+      <button class="mclose" onclick="closeModal('pdfModal')">×</button>
+    </div>
+    <div class="mbody">
+      <div id="pdfOptAll" class="pdf-opt selected" onclick="selectPdfOpt('all')">
+        <div style="font-size:1.4rem;flex-shrink:0">📅</div>
+        <div><div class="pdf-opt-label">Laporan Per Bulan</div><div class="pdf-opt-sub">Semua klien di bulan tertentu</div></div>
+      </div>
+      <div id="pdfOptClient" class="pdf-opt" onclick="selectPdfOpt('client')">
+        <div style="font-size:1.4rem;flex-shrink:0">🏢</div>
+        <div><div class="pdf-opt-label">Laporan Per Klien</div><div class="pdf-opt-sub">Detail satu klien — termin & COGS</div></div>
+      </div>
+      <div id="pdfOptAllForm" style="margin-top:.75rem">
+        <div class="fl"><label>Pilih Bulan</label><select id="pdfMonth" style="width:100%;border:1px solid var(--border);padding:.45rem .7rem;font-family:var(--mono);font-size:12px;background:var(--paper);outline:none"></select></div>
+      </div>
+      <div id="pdfOptClientForm" style="display:none;margin-top:.75rem">
+        <div class="fgrid2">
+          <div class="fl"><label>Pilih Klien</label><select id="pdfClient" style="width:100%;border:1px solid var(--border);padding:.45rem .7rem;font-family:var(--mono);font-size:12px;background:var(--paper);outline:none"></select></div>
+          <div class="fl"><label>Bulan (opsional)</label><select id="pdfClientMonth" style="width:100%;border:1px solid var(--border);padding:.45rem .7rem;font-family:var(--mono);font-size:12px;background:var(--paper);outline:none"><option value="">Semua Bulan</option></select></div>
+        </div>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn ou" onclick="closeModal('pdfModal')">Batal</button>
+      <button class="btn pdf" onclick="doExportPdf()">↓ Generate PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="moverlay" id="importModal">
+  <div class="mbox" style="max-width:600px">
+    <div class="mhead">
+      <span class="mtitle">Import Data dari Google Sheets</span>
+      <button class="mclose" onclick="closeModal('importModal')">×</button>
+    </div>
+    <div class="mbody">
+      <p style="font-size:13px;color:var(--ink3);margin-bottom:.75rem">Preview di Claude tidak bisa konek langsung ke Google Sheets. Cara pakai:</p>
+      <ol style="font-size:13px;color:var(--ink2);margin-bottom:1rem;padding-left:1.25rem;line-height:2">
+        <li>Buka file HTML ini di browser biasa (Chrome/Safari)</li>
+        <li>Klik "↻ Sync Sheets" — data akan otomatis load</li>
+        <li>Atau: buka Google Sheets kamu → Ekstensi → Apps Script → jalankan fungsi <code style="background:var(--paper3);padding:1px 5px;border-radius:2px">exportData()</code> → copy JSON-nya</li>
+        <li>Paste JSON di bawah ini</li>
+      </ol>
+      <div class="fl"><label>Paste JSON Data</label><textarea id="importJson" rows="8" placeholder='{"clients":[...],"categories":[...]}'style="font-family:var(--mono);font-size:11px"></textarea></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn ou" onclick="closeModal('importModal')">Batal</button>
+      <button class="btn pr" onclick="doImport()">Import & Render</button>
+    </div>
+  </div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Menyimpan...</div>
+</div>
+
+<script>
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.sb-link').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('panel-'+id).classList.add('active');
+  document.getElementById('nav-'+id).classList.add('active');
+  // Always re-render analytics so data is fresh when switching panels
+  var g = calcGlobal();
+  renderDashboard(g);
+  renderEBITDA(g);
+  renderCashFlow();
+  renderOpexPanel(g);
+}
+
+// ============================================================
+// CONFIG
+// ============================================================
+var SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzLrLos2Qp_xsiudEswLdNgyY162eB88VcEA4vJnytE6MTp2YVFy4GTQSToV4rRpFwZYw/exec';
+
+// ============================================================
+// STATE — pre-loaded with contract data (overwritten by Sheets on sync)
+// ============================================================
+var STATE = {
+  clients: [{"id":"mqgsr8vblpnlm","client":"PT Digital Kreatif Tech","project":"Narrative Recovery & Reputation Management","month":"06","year":"2026","total":150000000,"pic":"Maura","marginTarget":null,"notes":"> Monitoring & Inelligence\n> Content Support & Amplification \n> 5 Phase Execution Framewrok","termins":[{"name":"Termin 1","nilai":150000000,"due":"2026-06-08","paid":true,"paidDate":"2026-06-16"}],"cogsItems":[{"name":"MPN : Feed Carousell/Video Instagram","cat":"Vendor/Makelar","amount":3578400,"date":"2026-06-14","note":""},{"name":"Tokosocmed : Sarwendah","cat":"Vendor/Makelar","amount":200000,"date":"2026-06-15","note":""},{"name":"Tokosocmed : Sarwendah","cat":"Vendor/Makelar","amount":200000,"date":"2026-06-15","note":""},{"name":"Tokosocmed : Sarwendah","cat":"Vendor/Makelar","amount":23500,"date":"2026-06-15","note":""},{"name":"Invoice : Boost Like Threads","cat":"Vendor/Makelar","amount":78154,"date":"2026-06-16","note":""},{"name":"Invoice : Boost Like Threads","cat":"Vendor/Makelar","amount":143824,"date":"2026-06-16","note":""}],"createdAt":"2026-06-16T15:28:30.119Z"},{"id":"mqbyna2i7z3f2","client":"PT Pertamina Training and Consulting","project":"Layanan Strategi dan Distribusi Konten Digital","month":"01","year":"2026","total":405000000,"pic":"SWAIN & FAZRI","marginTarget":null,"notes":"> Perception Engineering services sesuai scope yang disepakati. Sudah termasuk PPN 11%.\n> Surat Kesanggupan No. 01/STP-SK/I/2026. Ditandatangani Swain Mahisa Ardana Direktur.","termins":[{"name":"Termin 1","nilai":202500000,"due":"2026-06-30","paid":false,"paidDate":""},{"name":"Termin 2","nilai":101250000,"due":"2026-09-30","paid":false,"paidDate":""},{"name":"Termin 3","nilai":101250000,"due":"2026-12-31","paid":false,"paidDate":""}],"cogsItems":[{"name":"MSC TRENDING : 25 AKUN MINFOLL  1000 KOMEN","cat":"Vendor/Makelar","amount":87500,"date":"2026-02-07","note":""},{"name":"MSC TRENDING : 100 AKUN NO MINFOLL  100, LIKE KOMEN","cat":"Vendor/Makelar","amount":100000,"date":"2026-02-07","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL KOMEN PTC","cat":"Vendor/Makelar","amount":15000,"date":"2026-02-13","note":""},{"name":"SOSMED & TRENDING : AKUN TIKTOK NO MINFOLL KOMEN","cat":"Vendor/Makelar","amount":15000,"date":"2026-02-13","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW","cat":"Vendor/Makelar","amount":195000,"date":"2026-02-14","note":""},{"name":"SOSMED & TREN DING : AKUN TIKTOK NO MINFOLL FOLLOW","cat":"Vendor/Makelar","amount":35000,"date":"2026-02-14","note":""},{"name":"SOSMED & TRENDING : AKUN TIKTOK NO MINFOLL FOLLOW","cat":"Vendor/Makelar","amount":10500,"date":"2026-02-14","note":""},{"name":"SOSMED & TRENDING :  AKUN IG NO MINFOLL FOLLOW","cat":"Vendor/Makelar","amount":300000,"date":"2026-02-17","note":""},{"name":"SOSMED & TRENDING : AKU IG NO MINFOLL FOLLOW  PTC_EVENTMANAGEMEN","cat":"Vendor/Makelar","amount":30000,"date":"2026-02-17","note":""},{"name":"SOSMED & TRENDING : AKU IG NO MINFOLL FOLLOW  PTC_DEVELOPMENT CENTER","cat":"Vendor/Makelar","amount":60000,"date":"2026-02-17","note":""},{"name":"SOSMED & TRENDING : AKU TIKTOK NO MINFOLL FOLLOW PTC_ID","cat":"Vendor/Makelar","amount":70000,"date":"2026-02-17","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL KOMEN","cat":"Vendor/Makelar","amount":37500,"date":"2026-02-17","note":""},{"name":"SOSMED & TRENDING : AKUN TIKTOK NO MINFOLL KOMEN","cat":"Vendor/Makelar","amount":37500,"date":"2026-02-17","note":""},{"name":"SOSMED & TRENDING : AKU IG NO MINFOLL FOLLOW PTC_ ID","cat":"Vendor/Makelar","amount":300000,"date":"2026-02-21","note":""},{"name":"SOSMED & TRENDING : AKU IG NO MINFOLL FOLLOW  PTC_EVENTMANAGEMEN","cat":"Vendor/Makelar","amount":30000,"date":"2026-02-21","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_ID","cat":"Vendor/Makelar","amount":60000,"date":"2026-02-21","note":""},{"name":"SOSMED & TRENDING : AKUN TIKTOK NO MINFOLL FOLLOW PTC_ID","cat":"Vendor/Makelar","amount":70000,"date":"2026-02-21","note":""},{"name":"SOSMED & TRENDING :AKUN IG NO MINFOLL KOMEN","cat":"Vendor/Makelar","amount":24000,"date":"2026-02-21","note":""},{"name":"SOSMED & TRENDING : AKUN TIKTOK NO MINFOLL KOMEN","cat":"Vendor/Makelar","amount":15000,"date":"2026-02-21","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_ID","cat":"Vendor/Makelar","amount":450000,"date":"2026-02-21","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_EVENMANAGEMEN","cat":"Vendor/Makelar","amount":45000,"date":"2026-02-21","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_DEVELOPMENCENTER","cat":"Vendor/Makelar","amount":90000,"date":"2026-02-21","note":""},{"name":"SOSMED & TRENDING : AKUN TIKTOK NO MINFOLL FOLLOW PTC_ID","cat":"Vendor/Makelar","amount":105000,"date":"2026-02-21","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_ID","cat":"Vendor/Makelar","amount":150000,"date":"2026-02-21","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_EVENMANAGEMEN","cat":"Vendor/Makelar","amount":15000,"date":"2026-02-21","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_DEVELPOMENCENTER","cat":"Vendor/Makelar","amount":30000,"date":"2026-02-21","note":""},{"name":"SOSMED & TRENDING : AKUN TIKTOK NO MINFOLL FOLLOW  PTC_ID","cat":"Vendor/Makelar","amount":35000,"date":"2026-02-21","note":""},{"name":"SOSMED & TRENDING : KOMEN TIKTOK PTC NO MINFOLL","cat":"Vendor/Makelar","amount":15000,"date":"2026-02-21","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_ID","cat":"Vendor/Makelar","amount":900000,"date":"2026-03-01","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_EVENMANAGEMEN","cat":"Vendor/Makelar","amount":90000,"date":"2026-03-01","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_DEVELOPMENCENTER","cat":"Vendor/Makelar","amount":180000,"date":"2026-03-01","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_ID","cat":"Vendor/Makelar","amount":210000,"date":"2026-03-01","note":""},{"name":"SOSMED & TRENDING :  KOMEN TIKTOK PTC","cat":"Vendor/Makelar","amount":21000,"date":"2026-03-01","note":""},{"name":"SOMEXTHREAD : 6X THREAD","cat":"Vendor/Makelar","amount":550000,"date":"2026-03-06","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW  PTC_ID","cat":"Vendor/Makelar","amount":450000,"date":"2026-03-08","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_EVENMANAGEMEN","cat":"Vendor/Makelar","amount":105000,"date":"2026-03-08","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_DEVELOPMENCENTER","cat":"Vendor/Makelar","amount":210000,"date":"2026-03-08","note":""},{"name":"SOSMED & TRENDING : AKUN TIKOK NO MINFOLL FOLLOW PTC_ID","cat":"Vendor/Makelar","amount":105000,"date":"2026-03-08","note":""},{"name":"SOSMED & TRENDING : KOMEN TIKTOK PTC NO MINFOLL","cat":"Vendor/Makelar","amount":25500,"date":"2026-03-08","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_EVENMANAGEMEN","cat":"Vendor/Makelar","amount":90000,"date":"2026-03-17","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_DEVELOPMENCENTER","cat":"Vendor/Makelar","amount":180000,"date":"2026-03-17","note":""},{"name":"SOSMED & TRENDING : KOMEN SOSMED  PTC NO MINFOLL","cat":"Vendor/Makelar","amount":30000,"date":"2026-03-17","note":""},{"name":"SOMEXTHREAD : 6X THREAD","cat":"Vendor/Makelar","amount":550000,"date":"2026-03-29","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_EVENMANAGEMEN","cat":"Vendor/Makelar","amount":210000,"date":"2026-03-30","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW  PTC_DEVELOPMENCENTER","cat":"Vendor/Makelar","amount":320000,"date":"2026-03-30","note":""},{"name":"SOSMED & TRENDING : KOMEN SOSMED PTC, MINFOLL 100","cat":"Vendor/Makelar","amount":74000,"date":"2026-03-30","note":""},{"name":"SOSMED & TRENDING : KOMEN SOSMED NO MINFOLL","cat":"Vendor/Makelar","amount":19500,"date":"2026-03-30","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_DEVELOPMENCENTER","cat":"Vendor/Makelar","amount":90000,"date":"2026-04-05","note":""},{"name":"SOSMED & TRENDING : KOMEN SOSMED PTC NO MINFOLL","cat":"Vendor/Makelar","amount":9000,"date":"2026-04-05","note":""},{"name":"MEDIA : 4 MEDIA SEMINAR","cat":"Vendor/Makelar","amount":84000,"date":"2026-04-08","note":""},{"name":"SOMEXTHREAD : 5X THREAD","cat":"Vendor/Makelar","amount":500000,"date":"2026-04-10","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_EVENMANAGEMEN","cat":"Vendor/Makelar","amount":120000,"date":"2026-04-13","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_DEVELOPMENCENTER","cat":"Vendor/Makelar","amount":120000,"date":"2026-04-13","note":""},{"name":"SOSMED & TRENDING : KOMEN SOSMED PTC NO MINFOLL","cat":"Vendor/Makelar","amount":22500,"date":"2026-04-13","note":""},{"name":"SOSMED & TRENDING : LIEK POST SOSMED  PTC NO MINFOLL","cat":"Vendor/Makelar","amount":350000,"date":"2026-04-13","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_EVENMANAGEMN","cat":"Vendor/Makelar","amount":120000,"date":"2026-04-18","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_EVENMANAGEMEN","cat":"Vendor/Makelar","amount":105000,"date":"2026-04-28","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_DEVELOPMENCENTER","cat":"Vendor/Makelar","amount":90000,"date":"2026-04-28","note":""},{"name":"SOSMED & TRENDING : KOMEN SOSMED PTC NO MINFOLL","cat":"Vendor/Makelar","amount":22500,"date":"2026-04-28","note":""},{"name":"SEMINAR UTAMA  MEDIA PERTAMINA","cat":"Vendor/Makelar","amount":84000,"date":"2026-04-28","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_EVENMANAGEMEN","cat":"Vendor/Makelar","amount":30000,"date":"2026-05-07","note":""},{"name":"SOSMED & TRENDING : KOMEN SOSMED PTC","cat":"Vendor/Makelar","amount":19500,"date":"2026-05-07","note":""},{"name":"MEDIA SEMINAR UTAMA","cat":"Vendor/Makelar","amount":60000,"date":"2026-05-07","note":""},{"name":"SOSMED & TRENDING : AKUN IG NO MINFOLL FOLLOW PTC_EVENMANAGEMEN & DEVELOPMENCENTER","cat":"Vendor/Makelar","amount":130000,"date":"2026-05-11","note":""},{"name":"SOSMED & TRENDING : KOMEN SOSMED PTC","cat":"Vendor/Makelar","amount":28500,"date":"2026-05-14","note":""},{"name":"MEDIA THREADS : 1X POST","cat":"Vendor/Makelar","amount":600000,"date":"2026-05-19","note":""},{"name":"SOSMED & TRENDING : FOLLOW EVENTMANAGAMEN  IG","cat":"Vendor/Makelar","amount":60000,"date":"2026-05-25","note":""},{"name":"SOSMED & TRENDING : KOMEN & QRT MINFOLL 100","cat":"Vendor/Makelar","amount":90000,"date":"2026-05-25","note":""},{"name":"SOSMED & TRENDING : REPOST/RETETWEET PTC","cat":"Vendor/Makelar","amount":100000,"date":"2026-05-25","note":""},{"name":"SOSMED & TRENDING : LIKE PTC","cat":"Vendor/Makelar","amount":150000,"date":"2026-05-25","note":""},{"name":"SOSMED & TRENDING : KOMEN NO  MINFOLL","cat":"Vendor/Makelar","amount":27000,"date":"2026-05-25","note":""},{"name":"MEDIA SEMINAR UTAMA","cat":"Vendor/Makelar","amount":56000,"date":"2026-05-30","note":""},{"name":"MSC TREND : KOMEN NO MINFOLL","cat":"Vendor/Makelar","amount":37500,"date":"2026-05-30","note":""},{"name":"MSC TREND : KOMEN NO MINFOLL","cat":"Vendor/Makelar","amount":13500,"date":"2026-06-08","note":""},{"name":"MSC TREND : KOMEN & LIKE","cat":"Vendor/Makelar","amount":16500,"date":"2026-06-14","note":""}],"createdAt":"2026-06-13T06:14:31.866Z"},{"id":"mqbxpbrdun276","client":"Smartfren","project":"VIRALITY ENGINE","month":"01","year":"2026","total":692000000,"pic":"Fazri & Swain","marginTarget":null,"notes":"> KPI Sentiment min 90%, Delivery H-2, Clippers min 90%, Virality Reporting. Penalty skor kurang dari 2 = 85% paid fee\n> 20.000 komentar/bln, 30.000 engagement dan 500K impressions/bln, 6x Trending Topic/tahun, 4x High Media/bln, 1 juta views/bln, 10 clippers/bln, Managed Service 12 bulan","termins":[{"name":"Termin 1","nilai":173000000,"due":"2026-03-01","paid":true,"paidDate":"2026-06-16"},{"name":"Termin 2","nilai":173000000,"due":"2026-04-30","paid":false,"paidDate":""},{"name":"Termin 3","nilai":173000000,"due":"2026-10-01","paid":false,"paidDate":""},{"name":"Termin 4","nilai":172000000,"due":"2027-01-01","paid":false,"paidDate":""}],"cogsItems":[{"name":"INDOBUZZ : 2 AKUN TIKTOK RTP  MINFOLL 10K","cat":"Vendor/Makelar","amount":120000,"date":"2026-03-06","note":""},{"name":"INDOBUZZ : 2 AKUN MINFOLL 10K","cat":"Vendor/Makelar","amount":120000,"date":"2026-03-10","note":""},{"name":"JEMBERMAT : 1X FEED & 1X STORY","cat":"Vendor/Makelar","amount":200000,"date":"2026-03-19","note":""},{"name":"INFO MALANG : POST IG FEED","cat":"Vendor/Makelar","amount":300000,"date":"2026-03-19","note":""},{"name":"INDOBUZZ : 2 AKUN MINFOLL 10K","cat":"Vendor/Makelar","amount":120000,"date":"2026-04-05","note":""},{"name":"INDOBUZZ : 1 AKUN X MINFOLL","cat":"Vendor/Makelar","amount":120000,"date":"2026-04-13","note":""},{"name":"MSC TRENDING : 1 AKUN X MINFOLL","cat":"Vendor/Makelar","amount":61500,"date":"2026-04-18","note":""},{"name":"MEDIA JKT INFO : FEED","cat":"Vendor/Makelar","amount":1500000,"date":"2026-04-21","note":""},{"name":"INDOBUZZ : 2 AKUN TIKTOK MINFOLL","cat":"Vendor/Makelar","amount":120000,"date":"2026-04-21","note":""},{"name":"SOMEXTHREAD : 1X TWEET + PHOTO","cat":"Vendor/Makelar","amount":200000,"date":"2026-04-24","note":""},{"name":"MSC TRENDING : 1 AKUN X MINFOLL","cat":"Vendor/Makelar","amount":120000,"date":"2026-04-29","note":""},{"name":"INDOBUZZ : 1 AKUN RTP TIKTOK MINFOLL 10K","cat":"Vendor/Makelar","amount":60000,"date":"2026-04-27","note":""},{"name":"INDOBUZZ : 1 AKUN RTP TIKTOK MINFOLL 10K","cat":"Vendor/Makelar","amount":60000,"date":"2026-04-27","note":""},{"name":"TRENDBUZZ : 100 REPORT","cat":"Vendor/Makelar","amount":300000,"date":"2026-05-07","note":""},{"name":"MEDIA JKT INFO : FEED","cat":"Vendor/Makelar","amount":1500000,"date":"2026-05-14","note":""},{"name":"MEDIA JKT INFO","cat":"Vendor/Makelar","amount":1000000,"date":"2026-05-23","note":""},{"name":"SOSMED & TRENDING : KOMEN SOSMED SF, NO MINFOLL","cat":"Vendor/Makelar","amount":1696500,"date":"2026-05-25","note":""},{"name":"INDOBUZZ : 1 AKUN RTP TIKTOK MINFOLL 10K","cat":"Vendor/Makelar","amount":60000,"date":"2026-05-25","note":""},{"name":"MSC TRENDING : ORDER TRENDING TOPIC 1 JAM","cat":"Vendor/Makelar","amount":4800000,"date":"2026-05-25","note":""},{"name":"INDOBUZZ : RTP MINFOLL 5K","cat":"Vendor/Makelar","amount":60000,"date":"2026-05-30","note":""},{"name":"MSC TREND : KOMEN NO MINFOLL","cat":"Vendor/Makelar","amount":214500,"date":"2026-05-30","note":""},{"name":"MEDIA JKT INFO","cat":"Vendor/Makelar","amount":1500000,"date":"2026-06-01","note":""},{"name":"INDOBUZZ : 1 AKUN RTP MINFOLL","cat":"Vendor/Makelar","amount":30000,"date":"2026-06-04","note":""},{"name":"INDOBUZZ : 1 AKUN TIKTOK IG","cat":"Vendor/Makelar","amount":60000,"date":"2026-06-06","note":""},{"name":"MSC TREND : POST X & KOMEN","cat":"Vendor/Makelar","amount":2414000,"date":"2026-06-08","note":""},{"name":"MEDIA JKT INFO","cat":"Vendor/Makelar","amount":1000000,"date":"2026-06-12","note":""},{"name":"MSC TREND : KOMEN & LIKE","cat":"Vendor/Makelar","amount":3052000,"date":"2026-06-14","note":""}],"createdAt":"2026-06-13T05:48:07.753Z"},{"id":"mqbwtxmpz82bs","client":"Ade Jona","project":"HIPMI","month":"06","year":"2026","total":100000000,"pic":"FAZRI & SWAIN","marginTarget":null,"notes":"","termins":[{"name":"Termin 1","nilai":100000000,"due":"2026-05-29","paid":true,"paidDate":"2026-06-16"}],"cogsItems":[{"name":"MSC TREND : BOOST VIEW TIKTOK, FEE TALENT, PAJAK","cat":"Vendor/Makelar","amount":4285000,"date":"2026-06-01","note":""},{"name":"MSC TREND : TRENDING X, 15 BESAR","cat":"Vendor/Makelar","amount":3000000,"date":"2026-06-02","note":""},{"name":"MSC TREND : TRENDING X, 15 BESAR, SPAM KOMEN LIVE CHAT","cat":"Vendor/Makelar","amount":3250000,"date":"2026-06-04","note":""},{"name":"MSC TREND : POST SOSMED, LIKE, KOMEN","cat":"Vendor/Makelar","amount":1114000,"date":"2026-06-06","note":""},{"name":"MP DIGITAL SOLUTION : BOOST VIEW","cat":"Vendor/Makelar","amount":1143000,"date":"2026-06-08","note":""},{"name":"MSC TREND : TRENDING 15 BESAR","cat":"Vendor/Makelar","amount":2250000,"date":"2026-06-08","note":""},{"name":"MSC TREND : TRENDING X 15 BESAR","cat":"Vendor/Makelar","amount":2250000,"date":"2026-06-09","note":""},{"name":"MP DIGITAL SOLUTION","cat":"Vendor/Makelar","amount":918000,"date":"2026-06-10","note":""},{"name":"MSC TREND : TRENDING X 15 BESAR","cat":"Vendor/Makelar","amount":2250000,"date":"2026-06-10","note":""},{"name":"MSC TREND : RTP MINFOLL & KOMEN","cat":"Vendor/Makelar","amount":2306000,"date":"2026-06-12","note":""}],"createdAt":"2026-06-13T05:23:43.105Z"}],
+  categories: ['Vendor/Makelar','Freelancer','Aset/Alat','Software','Transportasi','Komisi Sales','Komisi Owner','Lain-lain'],
+  lastModified: null
+};
+var EDIT_ID = null;
+var PDF_OPT = 'all';
+var COGS_CID = null;
+var TEMP_CATS = [];
+var terminCount = 0;
+var AUTO_SYNC_INTERVAL = null;
+var LAST_SERVER_TS = null;
+var MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+// OpEx + Saldo state (localStorage only)
+var OPEX = { salary:23000000, owner:0, sales:0, sewa:0, lain:7000000, months:3, saldo:382000000, saldoLabel:'Maret 2026' };
+function loadOpex() {
+  try { var s=localStorage.getItem('authr_opex'); if(s){ OPEX=Object.assign(OPEX,JSON.parse(s)); } } catch(e){}
+  document.getElementById('opSalary').value = OPEX.salary||'';
+  document.getElementById('opOwner').value = OPEX.owner||'';
+  document.getElementById('opSales').value = OPEX.sales||'';
+  document.getElementById('opSewa').value = OPEX.sewa||'';
+  document.getElementById('opLain').value = OPEX.lain||'';
+  document.getElementById('opMonths').value = OPEX.months||3;
+  document.getElementById('opSaldo').value = OPEX.saldo||'';
+  document.getElementById('opSaldoLabel').value = OPEX.saldoLabel||'';
+}
+function saveOpex() {
+  OPEX.salary = parseFloat(document.getElementById('opSalary').value)||0;
+  OPEX.owner  = parseFloat(document.getElementById('opOwner').value)||0;
+  OPEX.sales  = parseFloat(document.getElementById('opSales').value)||0;
+  OPEX.sewa   = parseFloat(document.getElementById('opSewa').value)||0;
+  OPEX.lain   = parseFloat(document.getElementById('opLain').value)||0;
+  OPEX.months = parseFloat(document.getElementById('opMonths').value)||3;
+  OPEX.saldo  = parseFloat(document.getElementById('opSaldo').value)||0;
+  OPEX.saldoLabel = document.getElementById('opSaldoLabel').value||'';
+  try { localStorage.setItem('authr_opex', JSON.stringify(OPEX)); } catch(e){}
+}
+function opexPerMonth(){ return OPEX.salary+OPEX.owner+OPEX.sales+OPEX.sewa+OPEX.lain; }
+function opexPeriod(){ return opexPerMonth()*OPEX.months; }
+
+function openImportModal() { document.getElementById('importModal').classList.add('open'); }
+function doImport() {
+  var raw = (document.getElementById('importJson').value||'').trim();
+  if (!raw) { alert('JSON kosong.'); return; }
+  try {
+    var parsed = JSON.parse(raw);
+    // Support both {clients:[]} and [{id:...}] formats
+    if (Array.isArray(parsed)) {
+      STATE.clients = parsed;
+    } else {
+      STATE.clients = parsed.clients || STATE.clients;
+      STATE.categories = parsed.categories || STATE.categories;
+    }
+    try { localStorage.setItem('authr_clients_cache', JSON.stringify({clients:STATE.clients,categories:STATE.categories})); } catch(e) {}
+    closeModal('importModal');
+    setSyncStatus('ok', 'Data berhasil diimport');
+    render();
+  } catch(e) {
+    alert('JSON tidak valid. Pastikan format benar.\n'+e.message);
+  }
+}
+
+// ============================================================
+// GOOGLE SHEETS API — fetch (sama persis dengan tracker kiri yang bekerja)
+// ============================================================
+function loadFromSheets(force) {
+  // Tampilkan data cache/hardcoded dulu supaya tidak blank
+  try {
+    var cached = localStorage.getItem('authr_clients_cache');
+    if (cached) {
+      var parsed = JSON.parse(cached);
+      if (parsed.clients && parsed.clients.length > 0) {
+        STATE.clients = parsed.clients;
+        STATE.categories = parsed.categories || STATE.categories;
+      }
+    }
+  } catch(e) {}
+  render();
+  setSyncStatus('loading', 'Memuat dari Google Sheets...');
+
+  fetch(SHEETS_URL + '?action=load&t=' + Date.now())
+    .then(function(resp){ return resp.json(); })
+    .then(function(res) {
+      if (res.ok && res.data) {
+        var remote = JSON.parse(res.data);
+        if (!force && LAST_SERVER_TS && remote.ts && remote.ts !== LAST_SERVER_TS) {
+          showConflictBanner(); setSyncStatus('ok', 'Ada update dari tim'); return;
+        }
+        STATE.clients = remote.clients || [];
+        STATE.categories = remote.categories || STATE.categories;
+        LAST_SERVER_TS = remote.ts || null;
+        try { localStorage.setItem('authr_clients_cache', JSON.stringify({clients:STATE.clients,categories:STATE.categories})); } catch(e) {}
+        setSyncStatus('ok', 'Tersinkron dengan Google Sheets ' + '(' + STATE.clients.length + ' klien)');
+        updateLastSyncText(); hideConflictBanner(); render();
+      } else if (res.ok && !res.data) {
+        setSyncStatus('ok', 'Sheets kosong');
+      } else {
+        setSyncStatus('error', 'Gagal load data');
+      }
+    })
+    .catch(function() {
+      setSyncStatus('error', 'Gagal koneksi — pakai data lokal');
+    });
+}
+
+function saveToSheets() {
+  setSyncStatus('loading', 'Menyimpan ke Google Sheets...');
+  var ts = Date.now().toString();
+  // Form POST via hidden iframe (bypass CORS untuk write)
+  var iframe = document.getElementById('hiddenIframe');
+  if (!iframe) {
+    iframe = document.createElement('iframe');
+    iframe.name = 'hiddenIframe'; iframe.id = 'hiddenIframe'; iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+  }
+  var form = document.createElement('form');
+  form.method = 'POST'; form.action = SHEETS_URL; form.target = 'hiddenIframe'; form.style.display = 'none';
+  var inp = document.createElement('input');
+  inp.type = 'hidden'; inp.name = 'payload';
+  inp.value = JSON.stringify({ action:'save', data: JSON.stringify({clients:STATE.clients, categories:STATE.categories, ts:ts}) });
+  form.appendChild(inp); document.body.appendChild(form); form.submit();
+  setTimeout(function(){ form.remove(); }, 1000);
+  LAST_SERVER_TS = ts;
+  try { localStorage.setItem('authr_clients_cache', JSON.stringify({clients:STATE.clients,categories:STATE.categories})); } catch(e) {}
+  setTimeout(function(){ setSyncStatus('ok', 'Tersimpan di Google Sheets'); updateLastSyncText(); }, 2000);
+}
+async function saveAndRender() { saveToSheets(); render(); }
+function manualSync() { loadFromSheets(true); }
+function startAutoSync() {
+  if (AUTO_SYNC_INTERVAL) clearInterval(AUTO_SYNC_INTERVAL);
+  AUTO_SYNC_INTERVAL = setInterval(function(){ silentCheckUpdate(); }, 30000);
+}
+async function silentCheckUpdate() {
+  try {
+    var resp = await fetch(SHEETS_URL + '?action=load&t=' + Date.now());
+    var res = await resp.json();
+    if (res.ok && res.data) {
+      var remote = JSON.parse(res.data);
+      if (LAST_SERVER_TS && remote.ts && remote.ts !== LAST_SERVER_TS) {
+        showConflictBanner(); setSyncStatus('ok', '⚠ Ada update dari tim');
+      }
+    }
+  } catch(e) {}
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function fmt(n) { if (!n) return 'Rp 0'; return 'Rp ' + Math.round(n).toLocaleString('id-ID'); }
+function fmtN(n) { return Math.round(n||0).toLocaleString('id-ID'); }
+function fmtS(n) {
+  var abs=Math.abs(n||0);
+  if(abs>=1000000000) return 'Rp '+(n/1000000000).toFixed(1)+' M';
+  if(abs>=1000000) return 'Rp '+(n/1000000).toFixed(0)+' jt';
+  return fmt(n);
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function monthLabel(mm, yyyy) { return MONTHS[parseInt(mm)-1] + ' ' + yyyy; }
+function getMonthKey(c) { return (c.year||'2025') + '-' + (c.month||'01'); }
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function setSyncStatus(status, text) {
+  var dot = document.getElementById('syncDot'); var txt = document.getElementById('syncText');
+  dot.className = 'sync-dot ' + status; txt.textContent = text;
+}
+function updateLastSyncText() {
+  var el = document.getElementById('lastSyncText'); var now = new Date();
+  el.textContent = 'Last sync ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+}
+function showLoading(txt) { document.getElementById('loadingText').textContent = txt||'Menyimpan...'; document.getElementById('loadingOverlay').classList.add('open'); }
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function showConflictBanner() { document.getElementById('conflictBanner').classList.add('open'); }
+function hideConflictBanner() { document.getElementById('conflictBanner').classList.remove('open'); }
+function dismissConflict() { hideConflictBanner(); }
+
+// ============================================================
+// RENDER — original tracker
+// ============================================================
+function render() {
+  renderSummary();
+  renderClients();
+  populateFilterMonth();
+  populatePdfSelects();
+  renderRecap();
+  var now = new Date();
+  document.getElementById('hdrMeta').innerHTML = MONTHS[now.getMonth()] + ' ' + now.getFullYear() + '<br>' + STATE.clients.length + ' total klien';
+  renderAllAnalytics();
+}
+function renderSummary() {
+  var tInv=0,tPaid=0,tCogs=0,nOut=0,nCogs=0;
+  STATE.clients.forEach(function(c){
+    tInv+=c.total||0;
+    (c.termins||[]).forEach(function(t){ if(t.paid) tPaid+=t.nilai||0; else nOut++; });
+    (c.cogsItems||[]).forEach(function(g){ tCogs+=g.amount||0; nCogs++; });
+  });
+  var ar=tInv-tPaid, gp=tPaid-tCogs, margin=tPaid>0?Math.round(gp/tPaid*100):0, pct=tInv>0?Math.round(tPaid/tInv*100):0;
+  document.getElementById('sTotalInv').textContent=fmt(tInv);
+  document.getElementById('sTotalInvNote').textContent=STATE.clients.length+' klien aktif';
+  document.getElementById('sTotalPaid').textContent=fmt(tPaid);
+  document.getElementById('sTotalPaidNote').textContent=pct+'% collected';
+  document.getElementById('sTotalAR').textContent=fmt(ar);
+  document.getElementById('sTotalARNote').textContent=nOut+' termin outstanding';
+  document.getElementById('sTotalCogs').textContent=fmt(tCogs);
+  document.getElementById('sTotalCogsNote').textContent=nCogs+' item biaya';
+  document.getElementById('sGrossProfit').textContent=fmt(gp);
+  document.getElementById('sMarginNote').textContent=margin+'% margin dari revenue';
+}
+function renderClients() {
+  var q=(document.getElementById('searchInp').value||'').toLowerCase();
+  var fMonth=document.getElementById('filterMonth').value;
+  var fStatus=document.getElementById('filterStatus').value;
+  var list=STATE.clients.filter(function(c){
+    if(q&&!(c.client||'').toLowerCase().includes(q)&&!(c.project||'').toLowerCase().includes(q)) return false;
+    if(fMonth&&getMonthKey(c)!==fMonth) return false;
+    if(fStatus==='lunas'&&(c.termins||[]).some(function(t){return !t.paid;})) return false;
+    if(fStatus==='outstanding'&&!(c.termins||[]).some(function(t){return !t.paid;})) return false;
+    return true;
+  });
+  var el=document.getElementById('clientList');
+  if(!list.length){el.innerHTML='<div class="empty-state"><h3>Belum ada data</h3><p>Klik "+ Tambah Klien" untuk mulai.</p></div>';return;}
+  el.innerHTML=list.map(renderClientCard).join('');
+}
+function renderClientCard(c) {
+  var termins=c.termins||[],cogsItems=c.cogsItems||[];
+  var paid=termins.reduce(function(s,t){return s+(t.paid?t.nilai||0:0);},0);
+  var cogs=cogsItems.reduce(function(s,g){return s+(g.amount||0);},0);
+  var gp=paid-cogs, margin=paid>0?Math.round(gp/paid*100):null;
+  var pct=(c.total||0)>0?Math.round(paid/c.total*100):0;
+  var mc=margin===null?'na':margin>=40?'good':margin>=20?'warn':'bad';
+  var mt=margin===null?'No data':margin+'% margin';
+  var today=new Date().toISOString().slice(0,10);
+  var tRows=termins.map(function(t,i){
+    var over=!t.paid&&t.due&&t.due<today;
+    var sb=t.paid?'<span class="badge paid">Lunas</span>':over?'<span class="badge over">Overdue</span>':'<span class="badge outs">Outstanding</span>';
+    var pb=!t.paid?'<button class="btn xs ou" onclick="markPaid(\''+c.id+'\','+i+')">Mark Lunas</button>':'<span style="font-family:var(--mono);font-size:10px;color:var(--ink3)">'+(t.paidDate||'')+'</span>';
+    return '<tr class="'+(t.paid?'paid-row':'')+'"><td>'+escH(t.name||'Termin '+(i+1))+'</td><td class="r">'+fmt(t.nilai)+'</td><td class="mono">'+(t.due||'—')+'</td><td>'+sb+'</td><td>'+pb+'</td></tr>';
+  }).join('');
+  var cRows=cogsItems.map(function(g,i){
+    return '<tr><td class="mono">'+(g.date||'—')+'</td><td>'+escH(g.name||'—')+'</td><td><span style="font-family:var(--mono);font-size:11px;background:var(--paper3);padding:2px 8px;border-radius:2px">'+escH(g.cat||'—')+'</span></td><td class="r">'+fmt(g.amount)+'</td><td><button class="btn xs dn" onclick="delCogs(\''+c.id+'\','+i+')">✕</button></td></tr>';
+  }).join('');
+  var pnlCls=mc==='good'?'green':mc==='warn'?'warn-bg':mc==='bad'?'red-bg':'';
+  var pnlHtml='<div class="pnl-box">'
+    +'<div class="pnl-item dark"><div class="pnl-lbl">Revenue Terkumpul</div><div class="pnl-val">'+fmt(paid)+'</div><div class="pnl-sub">dari '+fmt(c.total)+'</div></div>'
+    +'<div class="pnl-item"><div class="pnl-lbl">Total COGS</div><div class="pnl-val" style="color:var(--red)">'+fmt(cogs)+'</div><div class="pnl-sub">'+cogsItems.length+' item</div></div>'
+    +'<div class="pnl-item '+pnlCls+'"><div class="pnl-lbl">Gross Profit</div><div class="pnl-val">'+fmt(gp)+'</div><div class="pnl-sub">'+(margin!==null?margin+'% margin':'Belum ada revenue')+'</div></div>'
+    +(c.marginTarget?'<div class="pnl-item"><div class="pnl-lbl">Target Margin</div><div class="pnl-val">'+c.marginTarget+'%</div><div class="pnl-sub">'+(margin!==null?(margin>=c.marginTarget?'✓ Tercapai':'✗ Belum tercapai'):'—')+'</div></div>':'')
+    +'</div>';
+  return '<div class="ccard" id="ccard-'+c.id+'">'
+    +'<div class="chdr" onclick="toggleCard(\''+c.id+'\')">'
+      +'<div class="chdr-left">'
+        +'<div class="cclient-name">'+escH(c.client||'—')+'</div>'
+        +'<div class="cproject">'+(c.project?escH(c.project):'')+(c.pic?' &mdash; '+escH(c.pic):'')+'</div>'
+        +'<div class="cmeta"><span>'+monthLabel(c.month,c.year)+'</span>'+(c.notes?'<span>'+escH(c.notes.slice(0,50))+'</span>':'')+'</div>'
+      +'</div>'
+      +'<div class="chdr-right"><div class="ctotal">'+fmt(c.total)+'</div><div><span class="cmargin-pill '+mc+'">'+mt+'</span></div></div>'
+    +'</div>'
+    +'<div class="cprog"><div class="cprogb" style="width:'+pct+'%"></div></div>'
+    +'<div class="cbody" id="cbody-'+c.id+'">'
+      +'<div class="ctabs">'
+        +'<button class="ctab active" onclick="switchCardTab(\''+c.id+'\',\'invoice\',this)">Invoice & Termin</button>'
+        +'<button class="ctab" onclick="switchCardTab(\''+c.id+'\',\'cogs\',this)">COGS ('+cogsItems.length+')</button>'
+        +'<button class="ctab" onclick="switchCardTab(\''+c.id+'\',\'pnl\',this)">P&amp;L</button>'
+        +'<span style="margin-left:auto;display:flex;gap:.4rem;align-items:center">'
+          +'<button class="btn xs ou" onclick="openEditModal(\''+c.id+'\')">Edit</button>'
+          +'<button class="btn xs dn" onclick="deleteClient(\''+c.id+'\')">Hapus</button>'
+        +'</span>'
+      +'</div>'
+      +'<div class="ctabpanel active" id="tab-invoice-'+c.id+'">'+(termins.length?'<table class="ttable"><thead><tr><th>Termin</th><th class="r">Nilai</th><th>Due Date</th><th>Status</th><th></th></tr></thead><tbody>'+tRows+'</tbody></table>':'<p style="font-size:12px;color:var(--ink3);padding:.5rem 0">Belum ada termin.</p>')+'</div>'
+      +'<div class="ctabpanel" id="tab-cogs-'+c.id+'"><div style="display:flex;justify-content:flex-end;margin-bottom:.75rem"><button class="btn sm ou" onclick="openCogsModal(\''+c.id+'\')">+ Tambah Biaya COGS</button></div>'+(cogsItems.length?'<table class="ttable"><thead><tr><th>Tanggal</th><th>Nama Biaya</th><th>Kategori</th><th class="r">Jumlah</th><th></th></tr></thead><tbody>'+cRows+'</tbody></table>':'<p style="font-size:12px;color:var(--ink3);padding:.5rem 0">Belum ada biaya dicatat.</p>')+'</div>'
+      +'<div class="ctabpanel" id="tab-pnl-'+c.id+'">'+pnlHtml+'</div>'
+    +'</div>'
+  +'</div>';
+}
+function toggleCard(id){var body=document.getElementById('cbody-'+id);var card=document.getElementById('ccard-'+id);if(!body)return;var open=body.classList.contains('open');body.classList.toggle('open',!open);card.classList.toggle('open',!open);}
+function switchCardTab(id,tab,btn){['invoice','cogs','pnl'].forEach(function(t){var p=document.getElementById('tab-'+t+'-'+id);if(p)p.classList.toggle('active',t===tab);});btn.closest('.ctabs').querySelectorAll('.ctab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');}
+
+// ============================================================
+// ACTIONS (original)
+// ============================================================
+function markPaid(cid,idx){var c=STATE.clients.find(function(x){return x.id===cid;});if(!c||!c.termins||!c.termins[idx])return;c.termins[idx].paid=true;c.termins[idx].paidDate=new Date().toISOString().slice(0,10);saveAndRender();}
+function deleteClient(id){if(!confirm('Hapus klien ini beserta semua data?'))return;STATE.clients=STATE.clients.filter(function(c){return c.id!==id;});saveAndRender();}
+function delCogs(cid,idx){var c=STATE.clients.find(function(x){return x.id===cid;});if(!c||!c.cogsItems)return;if(!confirm('Hapus item biaya ini?'))return;c.cogsItems.splice(idx,1);saveAndRender();}
+
+// COGS Modal
+function openCogsModal(cid){COGS_CID=cid;var c=STATE.clients.find(function(x){return x.id===cid;});if(!c)return;document.getElementById('cogsCLientName').textContent=c.client;document.getElementById('cogsCid').value=cid;document.getElementById('cogsFName').value='';document.getElementById('cogsFAmount').value='';document.getElementById('cogsFDate').value=new Date().toISOString().slice(0,10);document.getElementById('cogsFNote').value='';var sel=document.getElementById('cogsFCat');sel.innerHTML=STATE.categories.map(function(cat){return '<option>'+escH(cat)+'</option>';}).join('');document.getElementById('cogsModal').classList.add('open');}
+function saveCogs(){var name=(document.getElementById('cogsFName').value||'').trim();var amount=parseFloat(document.getElementById('cogsFAmount').value)||0;if(!name||!amount){alert('Nama biaya dan jumlah wajib diisi.');return;}var c=STATE.clients.find(function(x){return x.id===COGS_CID;});if(!c)return;if(!c.cogsItems)c.cogsItems=[];c.cogsItems.push({name:name,cat:document.getElementById('cogsFCat').value,amount:amount,date:document.getElementById('cogsFDate').value,note:document.getElementById('cogsFNote').value});closeModal('cogsModal');saveAndRender();}
+
+// Client Modal
+function openAddModal(){EDIT_ID=null;document.getElementById('modalTitle').textContent='Tambah Klien Baru';document.getElementById('editId').value='';document.getElementById('fClient').value='';document.getElementById('fProject').value='';var now=new Date();document.getElementById('fMonth').value=String(now.getMonth()+1).padStart(2,'0');document.getElementById('fYear').value=now.getFullYear();document.getElementById('fTotal').value='';document.getElementById('fPic').value='';document.getElementById('fMarginTarget').value='';document.getElementById('fNotes').value='';terminCount=0;document.getElementById('terminBody').innerHTML='';addTermin();document.getElementById('clientModal').classList.add('open');}
+function openEditModal(id){var c=STATE.clients.find(function(x){return x.id===id;});if(!c)return;EDIT_ID=id;document.getElementById('modalTitle').textContent='Edit Klien';document.getElementById('fClient').value=c.client||'';document.getElementById('fProject').value=c.project||'';document.getElementById('fMonth').value=c.month||'01';document.getElementById('fYear').value=c.year||'2025';document.getElementById('fTotal').value=c.total||'';document.getElementById('fPic').value=c.pic||'';document.getElementById('fMarginTarget').value=c.marginTarget||'';document.getElementById('fNotes').value=c.notes||'';terminCount=0;document.getElementById('terminBody').innerHTML='';(c.termins||[]).forEach(function(t){addTermin(t);});document.getElementById('clientModal').classList.add('open');}
+function addTermin(data){terminCount++;var i=terminCount;var tr=document.createElement('tr');tr.id='termin-row-'+i;tr.innerHTML='<td style="font-family:var(--mono);font-size:11px;color:var(--ink3)">'+i+'</td>'+'<td><input type="text" id="tname-'+i+'" value="'+(data&&data.name?escH(data.name):'Termin '+i)+'" placeholder="Nama termin"></td>'+'<td><input type="number" id="tnilai-'+i+'" value="'+(data&&data.nilai?data.nilai:'')+'" placeholder="0" min="0"></td>'+'<td><input type="date" id="tdue-'+i+'" value="'+(data&&data.due?data.due:'')+'"></td>'+'<td><select id="tstatus-'+i+'"><option value="outstanding"'+(data&&data.paid?'':' selected')+'>Outstanding</option><option value="paid"'+(data&&data.paid?' selected':'')+'>Lunas</option></select></td>'+'<td><button class="btn xs dn" onclick="removeTermin('+i+')">✕</button></td>';document.getElementById('terminBody').appendChild(tr);}
+function removeTermin(i){var el=document.getElementById('termin-row-'+i);if(el)el.remove();}
+function saveClient(){var client=(document.getElementById('fClient').value||'').trim();var total=parseFloat(document.getElementById('fTotal').value)||0;if(!client||!total){alert('Nama klien dan total invoice wajib diisi.');return;}var termins=[];document.querySelectorAll('#terminBody tr').forEach(function(tr){var id=tr.id.replace('termin-row-','');var nEl=document.getElementById('tnilai-'+id);if(!nEl)return;termins.push({name:document.getElementById('tname-'+id).value,nilai:parseFloat(nEl.value)||0,due:document.getElementById('tdue-'+id).value,paid:document.getElementById('tstatus-'+id).value==='paid',paidDate:document.getElementById('tstatus-'+id).value==='paid'?(new Date().toISOString().slice(0,10)):''});});if(EDIT_ID){var c=STATE.clients.find(function(x){return x.id===EDIT_ID;});if(c){c.client=client;c.project=document.getElementById('fProject').value.trim();c.month=document.getElementById('fMonth').value;c.year=document.getElementById('fYear').value;c.total=total;c.pic=document.getElementById('fPic').value.trim();c.marginTarget=parseFloat(document.getElementById('fMarginTarget').value)||null;c.notes=document.getElementById('fNotes').value.trim();c.termins=termins;}}else{STATE.clients.unshift({id:uid(),client:client,project:document.getElementById('fProject').value.trim(),month:document.getElementById('fMonth').value,year:document.getElementById('fYear').value,total:total,pic:document.getElementById('fPic').value.trim(),marginTarget:parseFloat(document.getElementById('fMarginTarget').value)||null,notes:document.getElementById('fNotes').value.trim(),termins:termins,cogsItems:[],createdAt:new Date().toISOString()});}closeModal('clientModal');saveAndRender();}
+
+// Categories
+function openCatModal(){TEMP_CATS=STATE.categories.slice();renderCatList();document.getElementById('catModal').classList.add('open');}
+function renderCatList(){document.getElementById('catList').innerHTML=TEMP_CATS.map(function(cat,i){return '<div class="cat-pill">'+escH(cat)+'<button class="remove" onclick="removeCat('+i+')">×</button></div>';}).join('');}
+function removeCat(i){TEMP_CATS.splice(i,1);renderCatList();}
+function addCategory(){var val=(document.getElementById('newCatInp').value||'').trim();if(!val||TEMP_CATS.includes(val))return;TEMP_CATS.push(val);document.getElementById('newCatInp').value='';renderCatList();}
+function saveCats(){STATE.categories=TEMP_CATS;closeModal('catModal');saveAndRender();}
+
+// Filter & Recap
+function populateFilterMonth(){var months={};STATE.clients.forEach(function(c){var k=getMonthKey(c);months[k]=monthLabel(c.month,c.year);});var sel=document.getElementById('filterMonth'),cur=sel.value;sel.innerHTML='<option value="">Semua Bulan</option>';Object.keys(months).sort().reverse().forEach(function(k){var o=document.createElement('option');o.value=k;o.textContent=months[k];sel.appendChild(o);});sel.value=cur;}
+function switchMainTab(tab){document.getElementById('clientsView').style.display=tab==='clients'?'':'none';document.getElementById('recapView').classList.toggle('open',tab==='recap');document.getElementById('tabBtnClients').classList.toggle('active',tab==='clients');document.getElementById('tabBtnRecap').classList.toggle('active',tab==='recap');if(tab==='recap')renderRecap();}
+function renderRecap(){var months={};STATE.clients.forEach(function(c){var k=getMonthKey(c);months[k]=monthLabel(c.month,c.year);});var sel=document.getElementById('recapMonthSel'),cur=sel.value;sel.innerHTML='';Object.keys(months).sort().reverse().forEach(function(k){var o=document.createElement('option');o.value=k;o.textContent=months[k];sel.appendChild(o);});if(cur)sel.value=cur;var key=sel.value;if(!key){document.getElementById('recapContent').innerHTML='<p style="color:var(--ink3);font-size:13px">Tidak ada data.</p>';return;}var clients=STATE.clients.filter(function(c){return getMonthKey(c)===key;});if(!clients.length){document.getElementById('recapContent').innerHTML='<p style="color:var(--ink3);font-size:13px">Tidak ada klien di bulan ini.</p>';return;}var mLabel=monthLabel(clients[0].month,clients[0].year);var gTotal=0,gPaid=0,gCogs=0;var rows=clients.map(function(c){var paid=(c.termins||[]).reduce(function(s,t){return s+(t.paid?t.nilai||0:0);},0);var cogs=(c.cogsItems||[]).reduce(function(s,g){return s+(g.amount||0);},0);var gp=paid-cogs,m=paid>0?Math.round(gp/paid*100):null;gTotal+=c.total||0;gPaid+=paid;gCogs+=cogs;return '<tr><td><strong>'+escH(c.client)+'</strong>'+(c.project?'<br><span style="font-size:11px;color:var(--ink3)">'+escH(c.project)+'</span>':'')+'</td>'+'<td class="r">'+fmt(c.total)+'</td><td class="r">'+fmt(paid)+'</td>'+'<td class="r" style="color:var(--red)">'+fmt(cogs)+'</td>'+'<td class="r" style="color:'+(gp>=0?'var(--green2)':'var(--red)')+'">'+fmt(gp)+'</td>'+'<td class="r">'+(m!==null?'<span style="font-family:var(--mono);font-size:11px;background:'+(m>=40?'var(--greenl)':m>=20?'var(--warnl)':'var(--redl)')+';color:'+(m>=40?'var(--green)':m>=20?'var(--warn)':'var(--red)')+';padding:2px 8px;border-radius:2px">'+m+'%</span>':'—')+'</td>'+'</tr>';}).join('');var gGp=gPaid-gCogs,gM=gPaid>0?Math.round(gGp/gPaid*100):0;var html='<h2 style="font-family:var(--serif);font-size:1.5rem;margin-bottom:1.25rem;font-weight:400">Rekap <em style="font-style:italic;color:var(--green2)">'+mLabel+'</em></h2>'+'<table class="recap-table"><thead><tr><th>Klien</th><th class="r">Total Invoice</th><th class="r">Dibayar</th><th class="r">COGS</th><th class="r">Gross Profit</th><th class="r">Margin</th></tr></thead>'+'<tbody>'+rows+'</tbody>'+'<tfoot><tr class="total-row"><td><strong>TOTAL</strong></td><td class="r">'+fmt(gTotal)+'</td><td class="r">'+fmt(gPaid)+'</td><td class="r" style="color:var(--red)">'+fmt(gCogs)+'</td><td class="r" style="color:'+(gGp>=0?'var(--green2)':'var(--red)')+'">'+fmt(gGp)+'</td><td class="r">'+gM+'%</td></tr></tfoot>'+'</table>';clients.forEach(function(c){var items=c.cogsItems||[];if(!items.length)return;html+='<div style="margin-bottom:1.5rem"><div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);border-top:.5px solid var(--border);padding-top:.75rem;margin-bottom:.75rem">BREAKDOWN COGS — '+escH(c.client)+'</div>'+'<table class="ttable"><thead><tr><th>Tanggal</th><th>Nama Biaya</th><th>Kategori</th><th class="r">Jumlah</th></tr></thead><tbody>'+items.map(function(g){return '<tr><td class="mono">'+(g.date||'—')+'</td><td>'+escH(g.name)+'</td><td><span style="font-family:var(--mono);font-size:11px;background:var(--paper3);padding:2px 8px">'+escH(g.cat||'—')+'</span></td><td class="r">'+fmt(g.amount)+'</td></tr>';}).join('')+'</tbody></table></div>';});document.getElementById('recapContent').innerHTML=html;}
+
+// ============================================================
+// ANALYTICS — Dashboard, EBITDA, Cash Flow
+// ============================================================
+function calcGlobal() {
+  var tInv=0,tPaid=0,tCogs=0,nOut=0,nCogs=0;
+  STATE.clients.forEach(function(c){
+    tInv+=c.total||0;
+    (c.termins||[]).forEach(function(t){ if(t.paid) tPaid+=t.nilai||0; else nOut++; });
+    (c.cogsItems||[]).forEach(function(g){ tCogs+=g.amount||0; nCogs++; });
+  });
+  var gp=tPaid-tCogs, margin=tPaid>0?Math.round(gp/tPaid*100):0;
+  var opex=opexPeriod(), ebitda=gp-opex, ebitdaMargin=tPaid>0?Math.round(ebitda/tPaid*100):0;
+  return {tInv,tPaid,tCogs,nOut,nCogs,gp,margin,opex,ebitda,ebitdaMargin};
+}
+
+function renderAllAnalytics() {
+  var g = calcGlobal();
+  renderDashboard(g);
+  renderEBITDA(g);
+  renderCashFlow();
+  renderOpexPanel(g);
+}
+
+function renderDashboard(g) {
+  document.getElementById('dTotalInv').textContent = fmtS(g.tInv);
+  document.getElementById('dTotalInvNote').textContent = STATE.clients.length + ' klien';
+  document.getElementById('dTotalPaid').textContent = fmtS(g.tPaid);
+  document.getElementById('dTotalPaidNote').textContent = (g.tInv>0?Math.round(g.tPaid/g.tInv*100):0) + '% collected';
+  document.getElementById('dAR').textContent = fmtS(g.tInv-g.tPaid);
+  document.getElementById('dARNote').textContent = g.nOut + ' termin outstanding';
+  document.getElementById('dCOGS').textContent = fmtS(g.tCogs);
+  document.getElementById('dCOGSNote').textContent = g.nCogs + ' item biaya';
+  document.getElementById('dGP').textContent = fmtS(g.gp);
+  document.getElementById('dGPNote').textContent = g.margin + '% margin';
+  var eEl=document.getElementById('dEBITDA');
+  eEl.textContent=(g.ebitda<0?'(':'')+'Rp '+Math.abs(Math.round(g.ebitda)).toLocaleString('id-ID')+(g.ebitda<0?')':'');
+  eEl.className='dsh-val '+(g.ebitda>=0?'g':'r');
+  document.getElementById('dEBITDANote').textContent=g.ebitdaMargin+'% EBITDA margin';
+  document.getElementById('dEBITDACard').className='dsh-card '+(g.ebitda>=0?'gn':'rd');
+  // Saldo & Runway
+  var saldo=OPEX.saldo||0, burnMonth=opexPerMonth()||1;
+  var runway=saldo/burnMonth;
+  document.getElementById('dSaldo').textContent=fmtS(saldo);
+  document.getElementById('dSaldoNote').textContent='Per '+(OPEX.saldoLabel||'—');
+  document.getElementById('dRunway').textContent='~'+runway.toFixed(1)+' bln';
+
+  // Alerts
+  var today=new Date().toISOString().slice(0,10);
+  var alerts='';
+  var overdues=[];
+  STATE.clients.forEach(function(c){(c.termins||[]).forEach(function(t){if(!t.paid&&t.due&&t.due<today)overdues.push(c.client+' — '+escH(t.name||'Termin')+' ('+fmt(t.nilai)+')');});});
+  if(overdues.length) alerts+='<div class="alert red"><strong>⚠ Termin Overdue</strong>'+overdues.join('<br>')+'</div>';
+  if(g.ebitda<0&&g.tPaid>0) alerts+='<div class="alert warn"><strong>EBITDA Negatif</strong>OpEx melebihi gross profit periode ini. Cek input OpEx atau pastikan lebih banyak termin yang lunas.</div>';
+  document.getElementById('dshAlerts').innerHTML=alerts;
+
+  // Client table
+  var rows='', ftInv=0, ftPaid=0, ftCogs=0, ftGP=0;
+  STATE.clients.forEach(function(c){
+    var paid=(c.termins||[]).reduce(function(s,t){return s+(t.paid?t.nilai||0:0);},0);
+    var cogs=(c.cogsItems||[]).reduce(function(s,g){return s+(g.amount||0);},0);
+    var gp2=paid-cogs, m=paid>0?Math.round(gp2/paid*100):null;
+    ftInv+=c.total||0; ftPaid+=paid; ftCogs+=cogs; ftGP+=gp2;
+    var mc2=m===null?'na':m>=40?'good':m>=20?'warn':'bad';
+    rows+='<tr><td>'+escH(c.client||'—')+'</td><td style="font-size:12px;color:var(--ink3)">'+escH(c.project||'—')+'</td><td style="font-family:var(--mono);font-size:11px;color:var(--ink3)">'+monthLabel(c.month,c.year)+'</td><td class="r mono">'+fmtS(c.total)+'</td><td class="r mono">'+fmtS(paid)+'</td><td class="r mono" style="color:var(--red)">'+fmtS(cogs)+'</td><td class="r mono" style="color:'+(gp2>=0?'var(--green2)':'var(--red)')+'">'+fmtS(gp2)+'</td><td class="r"><span class="cmargin-pill '+mc2+'">'+(m!==null?m+'%':'—')+'</span></td></tr>';
+  });
+  if(!STATE.clients.length) rows='<tr><td colspan="8" style="text-align:center;color:var(--ink3);padding:2rem;font-size:13px">Belum ada data. Tambahkan klien di Invoice Tracker.</td></tr>';
+  document.getElementById('dshClientRows').innerHTML=rows;
+  var ftM=ftPaid>0?Math.round(ftGP/ftPaid*100):0;
+  document.getElementById('dshFtInv').textContent=fmtS(ftInv);
+  document.getElementById('dshFtPaid').textContent=fmtS(ftPaid);
+  document.getElementById('dshFtCogs').textContent=fmtS(ftCogs);
+  document.getElementById('dshFtGP').textContent=fmtS(ftGP);
+  document.getElementById('dshFtMargin').textContent=ftM+'%';
+}
+
+function renderEBITDA(g) {
+  var maxVal=g.tPaid||1;
+  var wfRows=[
+    {lbl:'Revenue Terkumpul', val:g.tPaid, type:'g', bold:false},
+    {lbl:'— Total COGS', val:-g.tCogs, type:'r', bold:false, indent:true},
+    {lbl:'Gross Profit', val:g.gp, type:g.gp>=0?'g':'r', bold:true},
+    {lbl:'— OpEx ('+OPEX.months+' bln)', val:-g.opex, type:'r', bold:false, indent:true},
+    {lbl:'EBITDA', val:g.ebitda, type:g.ebitda>=0?'g':'r', bold:true},
+  ];
+  var wfHtml='';
+  wfRows.forEach(function(r){
+    var barW=Math.abs(r.val)/maxVal*100;
+    var sign=r.val<0?'−':'';
+    wfHtml+='<div class="wf-row">'
+      +'<div class="wf-lbl'+(r.bold?' bold':'')+(r.indent?' indent':'')+'">'+r.lbl+'</div>'
+      +'<div class="wf-bar-wrap"><div class="wf-bar '+r.type+'" style="width:'+barW+'%"></div></div>'
+      +'<div class="wf-val">'+sign+fmtS(Math.abs(r.val))+'</div>'
+      +'<div class="wf-pct">'+(g.tPaid>0?Math.round(r.val/g.tPaid*100)+'%':'—')+'</div>'
+    +'</div>';
+  });
+  document.getElementById('wfContainer').innerHTML=wfHtml;
+
+  document.getElementById('eRev').textContent=fmtS(g.tPaid);
+  document.getElementById('eCOGS').textContent=fmtS(g.tCogs);
+  document.getElementById('eCOGSNote').textContent=g.nCogs+' item';
+  document.getElementById('eGP').textContent=fmtS(g.gp);
+  document.getElementById('eGPNote').textContent=g.margin+'% gross margin';
+  document.getElementById('eOpex').textContent=fmtS(g.opex);
+  document.getElementById('eOpexNote').textContent=OPEX.months+' bulan × Rp '+Math.round(opexPerMonth()).toLocaleString('id-ID');
+  var eEl2=document.getElementById('eEBITDA');
+  eEl2.textContent=(g.ebitda<0?'(':'')+'Rp '+Math.abs(Math.round(g.ebitda)).toLocaleString('id-ID')+(g.ebitda<0?')':'');
+  eEl2.className='dsh-val '+(g.ebitda>=0?'g':'r');
+  document.getElementById('eEBITDANote').textContent=g.ebitdaMargin+'% dari revenue';
+  document.getElementById('eEBITDACard').className='dsh-card '+(g.ebitda>=0?'gn':'rd');
+  document.getElementById('eMargin').textContent=g.ebitdaMargin+'%';
+
+  // P&L per client table
+  var plRows='', plInv=0, plPaid=0, plCogs=0, plGP=0;
+  STATE.clients.forEach(function(c){
+    var paid=(c.termins||[]).reduce(function(s,t){return s+(t.paid?t.nilai||0:0);},0);
+    var cogs=(c.cogsItems||[]).reduce(function(s,g){return s+(g.amount||0);},0);
+    var gp2=paid-cogs, m=paid>0?Math.round(gp2/paid*100):null;
+    plInv+=c.total||0; plPaid+=paid; plCogs+=cogs; plGP+=gp2;
+    var mc2=m===null?'na':m>=40?'good':m>=20?'warn':'bad';
+    var vs='—';
+    if(c.marginTarget&&m!==null) vs='<span style="color:'+(m>=c.marginTarget?'var(--green2)':'var(--red)')+';">'+(m>=c.marginTarget?'✓':('✗ target '+c.marginTarget+'%'))+'</span>';
+    plRows+='<tr><td>'+escH(c.client||'—')+'</td><td style="font-family:var(--mono);font-size:11px;color:var(--ink3)">'+monthLabel(c.month,c.year)+'</td><td class="r mono">'+fmtS(c.total)+'</td><td class="r mono">'+fmtS(paid)+'</td><td class="r mono" style="color:var(--red)">'+fmtS(cogs)+'</td><td class="r mono" style="color:'+(gp2>=0?'var(--green2)':'var(--red)')+'">'+fmtS(gp2)+'</td><td class="r"><span class="cmargin-pill '+mc2+'">'+(m!==null?m+'%':'—')+'</span></td><td style="font-size:12px">'+vs+'</td></tr>';
+  });
+  if(!STATE.clients.length) plRows='<tr><td colspan="8" style="text-align:center;color:var(--ink3);padding:2rem;font-size:13px">Belum ada data.</td></tr>';
+  document.getElementById('plClientRows').innerHTML=plRows;
+  var plM=plPaid>0?Math.round(plGP/plPaid*100):0;
+  document.getElementById('plFtInv').textContent=fmtS(plInv);
+  document.getElementById('plFtPaid').textContent=fmtS(plPaid);
+  document.getElementById('plFtCogs').textContent=fmtS(plCogs);
+  document.getElementById('plFtGP').textContent=fmtS(plGP);
+  document.getElementById('plFtMargin').textContent=plM+'%';
+}
+
+function renderCashFlow() {
+  var today=new Date().toISOString().slice(0,10);
+  var buckets={}, totalAR=0, totalPaid=0, overdueAmt=0, next30=0;
+  STATE.clients.forEach(function(c){
+    (c.termins||[]).forEach(function(t){
+      if(t.paid){totalPaid+=t.nilai||0;return;}
+      totalAR+=t.nilai||0;
+      if(!t.due) return;
+      var key=t.due.slice(0,7);
+      buckets[key]=(buckets[key]||0)+(t.nilai||0);
+      if(t.due<today) overdueAmt+=t.nilai||0;
+      var dl=Math.ceil((new Date(t.due)-new Date(today))/86400000);
+      if(dl>=0&&dl<=30) next30+=t.nilai||0;
+    });
+  });
+
+  var keys=Object.keys(buckets).sort();
+  var maxBucket=keys.reduce(function(m,k){return Math.max(m,buckets[k]);},1);
+  var timelineHtml='';
+  if(!keys.length){
+    timelineHtml='<div style="text-align:center;padding:2rem;color:var(--ink3);font-size:13px">Belum ada termin dengan due date. Tambahkan due date di Invoice Tracker untuk melihat proyeksi cash flow.</div>';
+  } else {
+    keys.forEach(function(k){
+      var amt=buckets[k];
+      var w=Math.round(amt/maxBucket*100);
+      var isPeak=amt===maxBucket;
+      var mo=new Date(k+'-15').toLocaleDateString('id-ID',{month:'long',year:'numeric'});
+      timelineHtml+='<div class="cf-row">'
+        +'<div class="cf-month">'+mo+'</div>'
+        +'<div class="cf-bar-wrap"><div class="cf-bar" style="width:'+w+'%"></div></div>'
+        +'<div class="cf-amt'+(isPeak?' peak':'')+'">'+fmtS(amt)+(isPeak?' ★':'')+'</div>'
+      +'</div>';
+    });
+  }
+  document.getElementById('cfTimeline').innerHTML=timelineHtml;
+  document.getElementById('cfAR').textContent=fmtS(totalAR);
+  document.getElementById('cfPaid').textContent=fmtS(totalPaid);
+  document.getElementById('cfOverdue').textContent=fmtS(overdueAmt);
+  document.getElementById('cf30').textContent=fmtS(next30);
+
+  // Detail termin outstanding
+  var terminRows='';
+  STATE.clients.forEach(function(c){
+    (c.termins||[]).forEach(function(t){
+      if(t.paid) return;
+      var over=t.due&&t.due<today;
+      var dl=t.due?Math.ceil((new Date(t.due)-new Date(today))/86400000):null;
+      var st=over?'<span class="badge over">Overdue</span>':dl!==null&&dl<=30?'<span class="badge outs">'+dl+' hari lagi</span>':'<span class="badge outs">Outstanding</span>';
+      terminRows+='<tr><td>'+escH(c.client||'—')+'</td><td style="font-size:12px;color:var(--ink3)">'+escH(t.name||'—')+'</td><td class="mono">'+(t.due||'—')+'</td><td class="r mono">'+fmtS(t.nilai||0)+'</td><td>'+st+'</td></tr>';
+    });
+  });
+  if(!terminRows) terminRows='<tr><td colspan="5" style="text-align:center;color:var(--ink3);padding:2rem;font-size:13px">Tidak ada termin outstanding.</td></tr>';
+  document.getElementById('cfTerminRows').innerHTML=terminRows;
+}
+
+function renderOpexPanel(g) {
+  if(!g) g=calcGlobal();
+  var perMonth=opexPerMonth(), perPeriod=opexPeriod();
+  var saldo=OPEX.saldo||0, runway=perMonth>0?saldo/perMonth:0;
+  document.getElementById('opSaldoDisplay').textContent=fmtS(saldo);
+  document.getElementById('opSaldoLabelDisplay').textContent='Per '+(OPEX.saldoLabel||'—');
+  document.getElementById('opRunway').textContent='~'+runway.toFixed(1)+' bln';
+  document.getElementById('opTotalMonth').textContent=fmtS(perMonth);
+  document.getElementById('opTotalPeriod').textContent=fmtS(perPeriod);
+  document.getElementById('opPeriodNote').textContent=OPEX.months+' bulan';
+  document.getElementById('opGP').textContent=fmtS(g.gp);
+  var eEl3=document.getElementById('opEBITDA');
+  eEl3.textContent=(g.ebitda<0?'(':'')+'Rp '+Math.abs(Math.round(g.ebitda)).toLocaleString('id-ID')+(g.ebitda<0?')':'');
+  eEl3.className='dsh-val '+(g.ebitda>=0?'g':'r');
+  document.getElementById('opEBITDANote').textContent='GP '+fmtS(g.gp)+' − OpEx '+fmtS(perPeriod);
+  document.getElementById('opEBITDACard').className='dsh-card '+(g.ebitda>=0?'gn':'rd');
+}
+
+// ============================================================
+// PDF (original)
+// ============================================================
+function populatePdfSelects(){var months={};STATE.clients.forEach(function(c){var k=getMonthKey(c);months[k]=monthLabel(c.month,c.year);});var pmSel=document.getElementById('pdfMonth');pmSel.innerHTML='';Object.keys(months).sort().reverse().forEach(function(k){var o=document.createElement('option');o.value=k;o.textContent=months[k];pmSel.appendChild(o);});var pcmSel=document.getElementById('pdfClientMonth');pcmSel.innerHTML='<option value="">Semua Bulan</option>';Object.keys(months).sort().reverse().forEach(function(k){var o=document.createElement('option');o.value=k;o.textContent=months[k];pcmSel.appendChild(o);});var pcSel=document.getElementById('pdfClient');pcSel.innerHTML='';STATE.clients.forEach(function(c){var o=document.createElement('option');o.value=c.id;o.textContent=c.client+(c.project?' — '+c.project:'');pcSel.appendChild(o);});}
+function openPdfModal(){populatePdfSelects();document.getElementById('pdfModal').classList.add('open');}
+function selectPdfOpt(opt){PDF_OPT=opt;document.getElementById('pdfOptAll').classList.toggle('selected',opt==='all');document.getElementById('pdfOptClient').classList.toggle('selected',opt==='client');document.getElementById('pdfOptAllForm').style.display=opt==='all'?'':'none';document.getElementById('pdfOptClientForm').style.display=opt==='client'?'':'none';}
+function doExportPdf(){if(PDF_OPT==='all')exportMonthPdf(document.getElementById('pdfMonth').value);else exportClientPdf(document.getElementById('pdfClient').value,document.getElementById('pdfClientMonth').value);closeModal('pdfModal');}
+function exportRecapPdf(){var month=document.getElementById('recapMonthSel').value;if(!month){alert('Pilih bulan dulu.');return;}exportMonthPdf(month);}
+function exportMonthPdf(monthKey){var clients=STATE.clients.filter(function(c){return !monthKey||getMonthKey(c)===monthKey;});if(!clients.length){alert('Tidak ada data.');return;}var mLabel=monthKey?monthLabel(monthKey.split('-')[1],monthKey.split('-')[0]):'Semua Bulan';var {jsPDF}=window.jspdf;var doc=new jsPDF({orientation:'p',unit:'mm',format:'a4'});var W=doc.internal.pageSize.getWidth(),mg=15,y=mg;doc.setFontSize(8.5);doc.setTextColor(120,115,105);doc.text('LAPORAN KEUANGAN',mg,y);y+=5;doc.setFontSize(18);doc.setFont('helvetica','bold');doc.setTextColor(15,14,12);doc.text('Rekap '+mLabel,mg,y);y+=6;doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(120,115,105);doc.text('Dicetak: '+new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}),mg,y);y+=8;doc.setDrawColor(200,195,188);doc.setLineWidth(0.4);doc.line(mg,y,W-mg,y);y+=8;var gT=0,gP=0,gC=0;var body=clients.map(function(c){var p=(c.termins||[]).reduce(function(s,t){return s+(t.paid?t.nilai||0:0);},0);var cg=(c.cogsItems||[]).reduce(function(s,g){return s+(g.amount||0);},0);var gp=p-cg,m=p>0?Math.round(gp/p*100):null;gT+=c.total||0;gP+=p;gC+=cg;return[c.client+(c.project?'\n'+c.project:''),'Rp '+fmtN(c.total),'Rp '+fmtN(p),'Rp '+fmtN(cg),'Rp '+fmtN(gp),m!==null?m+'%':'—'];});var gGp=gP-gC,gM=gP>0?Math.round(gGp/gP*100):0;body.push(['TOTAL','Rp '+fmtN(gT),'Rp '+fmtN(gP),'Rp '+fmtN(gC),'Rp '+fmtN(gGp),gM+'%']);doc.autoTable({startY:y,head:[['Klien','Total Invoice','Dibayar','COGS','Gross Profit','Margin']],body:body,styles:{fontSize:8.5,cellPadding:3},headStyles:{fillColor:[15,14,12],textColor:255,fontStyle:'bold',fontSize:8},columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}},willDrawCell:function(d){if(d.row.index===clients.length&&d.section==='body'){d.cell.styles.fontStyle='bold';d.cell.styles.fillColor=[239,234,225];}},margin:{left:mg,right:mg}});y=doc.lastAutoTable.finalY+10;clients.forEach(function(c){var items=c.cogsItems||[];if(!items.length)return;if(y>250){doc.addPage();y=mg;}doc.setFontSize(8.5);doc.setFont('helvetica','bold');doc.setTextColor(15,14,12);doc.text('BREAKDOWN COGS — '+c.client.toUpperCase(),mg,y);y+=4;doc.setFont('helvetica','normal');doc.autoTable({startY:y,head:[['Tanggal','Nama Biaya','Kategori','Jumlah']],body:items.map(function(g){return[g.date||'—',g.name,g.cat||'—','Rp '+fmtN(g.amount)];}),styles:{fontSize:8,cellPadding:2.5},headStyles:{fillColor:[42,122,79],textColor:255,fontSize:7.5},columnStyles:{3:{halign:'right'}},margin:{left:mg,right:mg}});y=doc.lastAutoTable.finalY+8;});var pages=doc.getNumberOfPages();for(var i=1;i<=pages;i++){doc.setPage(i);doc.setFontSize(7.5);doc.setTextColor(160,155,148);doc.text('Finance Tracker — Rekap '+mLabel,mg,doc.internal.pageSize.getHeight()-10);doc.text('Hal '+i+' / '+pages,W-mg,doc.internal.pageSize.getHeight()-10,{align:'right'});}doc.save('Rekap-'+mLabel.replace(/ /g,'-')+'.pdf');}
+function exportClientPdf(cid,monthKey){var c=STATE.clients.find(function(x){return x.id===cid;});if(!c){alert('Klien tidak ditemukan.');return;}var {jsPDF}=window.jspdf;var doc=new jsPDF({orientation:'p',unit:'mm',format:'a4'});var W=doc.internal.pageSize.getWidth(),mg=15,y=mg;doc.setFontSize(8.5);doc.setTextColor(120,115,105);doc.text('LAPORAN KLIEN',mg,y);y+=5;doc.setFontSize(18);doc.setFont('helvetica','bold');doc.setTextColor(15,14,12);doc.text(c.client,mg,y);y+=6;doc.setFont('helvetica','normal');if(c.project){doc.setFontSize(11);doc.setTextColor(60,55,50);doc.text(c.project,mg,y);y+=5;}doc.setFontSize(8.5);doc.setTextColor(120,115,105);doc.text(monthLabel(c.month,c.year)+(c.pic?' · PIC: '+c.pic:''),mg,y);y+=7;doc.setDrawColor(200,195,188);doc.setLineWidth(0.4);doc.line(mg,y,W-mg,y);y+=8;var paid=(c.termins||[]).reduce(function(s,t){return s+(t.paid?t.nilai||0:0);},0);var cogs=(c.cogsItems||[]).reduce(function(s,g){return s+(g.amount||0);},0);var gp=paid-cogs,m=paid>0?Math.round(gp/paid*100):null;doc.autoTable({startY:y,head:[['Total Invoice','Dibayar','Sisa AR','Total COGS','Gross Profit','Margin']],body:[['Rp '+fmtN(c.total),'Rp '+fmtN(paid),'Rp '+fmtN((c.total||0)-paid),'Rp '+fmtN(cogs),'Rp '+fmtN(gp),m!==null?m+'%':'—']],styles:{fontSize:8.5,cellPadding:4},headStyles:{fillColor:[15,14,12],textColor:255,fontSize:8},columnStyles:{0:{halign:'right'},1:{halign:'right'},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}},margin:{left:mg,right:mg}});y=doc.lastAutoTable.finalY+10;if((c.termins||[]).length){if(y>240){doc.addPage();y=mg;}doc.setFontSize(8.5);doc.setFont('helvetica','bold');doc.setTextColor(15,14,12);doc.text('TERMIN PEMBAYARAN',mg,y);y+=4;doc.setFont('helvetica','normal');doc.autoTable({startY:y,head:[['Termin','Nilai','Due Date','Status','Dibayar Tgl']],body:(c.termins||[]).map(function(t){return[t.name||'—','Rp '+fmtN(t.nilai),t.due||'—',t.paid?'Lunas':'Outstanding',t.paidDate||'—'];}),styles:{fontSize:8.5,cellPadding:3},headStyles:{fillColor:[42,122,79],textColor:255,fontSize:8},columnStyles:{1:{halign:'right'}},margin:{left:mg,right:mg}});y=doc.lastAutoTable.finalY+10;}if((c.cogsItems||[]).length){if(y>240){doc.addPage();y=mg;}doc.setFontSize(8.5);doc.setFont('helvetica','bold');doc.setTextColor(15,14,12);doc.text('BIAYA COGS',mg,y);y+=4;doc.setFont('helvetica','normal');doc.autoTable({startY:y,head:[['Tanggal','Nama Biaya','Kategori','Keterangan','Jumlah']],body:(c.cogsItems||[]).map(function(g){return[g.date||'—',g.name,g.cat||'—',g.note||'—','Rp '+fmtN(g.amount)];}),foot:[['','','','Total COGS','Rp '+fmtN(cogs)]],styles:{fontSize:8,cellPadding:3},headStyles:{fillColor:[42,122,79],textColor:255,fontSize:8},footStyles:{fontStyle:'bold',fillColor:[239,234,225]},columnStyles:{4:{halign:'right'}},margin:{left:mg,right:mg}});}if(c.notes){y=doc.lastAutoTable?doc.lastAutoTable.finalY+8:y;doc.setFontSize(8.5);doc.setTextColor(120,115,105);doc.text('Catatan: '+c.notes,mg,y);}var pages=doc.getNumberOfPages();for(var i=1;i<=pages;i++){doc.setPage(i);doc.setFontSize(7.5);doc.setTextColor(160,155,148);doc.text('Finance Tracker — '+c.client,mg,doc.internal.pageSize.getHeight()-10);doc.text('Hal '+i+' / '+pages,W-mg,doc.internal.pageSize.getHeight()-10,{align:'right'});}doc.save('Laporan-'+c.client.replace(/ /g,'-')+'.pdf');}
+
+// ============================================================
+// INIT
+// ============================================================
+document.querySelectorAll('.moverlay').forEach(function(el){
+  el.addEventListener('click',function(e){ if(e.target===el) el.classList.remove('open'); });
+});
+window.addEventListener('DOMContentLoaded', function(){
+  loadOpex();
+  loadFromSheets(true);
+  startAutoSync();
+});
+</script>
+</body>
+</html>
