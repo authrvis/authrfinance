@@ -679,7 +679,10 @@ var MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus'
 var OPEX = { salary:23000000, owner:0, sales:0, sewa:0, lain:7000000, months:3, saldo:382000000, saldoLabel:'Maret 2026' };
 function loadOpex() {
   try { var s=localStorage.getItem('authr_opex'); if(s){ OPEX=Object.assign(OPEX,JSON.parse(s)); } } catch(e){}
-  document.getElementById('opSalary').value = OPEX.salary||'';
+  try { var c=localStorage.getItem('authr_clients_cache'); if(c){ var p=JSON.parse(c); if(p.opex) OPEX=Object.assign(OPEX,p.opex); } } catch(e){}
+  loadOpexInputs();
+}
+function loadOpexInputs() {
   document.getElementById('opOwner').value = OPEX.owner||'';
   document.getElementById('opSales').value = OPEX.sales||'';
   document.getElementById('opSewa').value = OPEX.sewa||'';
@@ -755,8 +758,9 @@ function loadFromSheets(force) {
           }
           STATE.clients = remote.clients || [];
           STATE.categories = remote.categories || STATE.categories;
+          if (remote.opex) { OPEX = Object.assign(OPEX, remote.opex); loadOpexInputs(); }
           LAST_SERVER_TS = remote.ts || null;
-          try { localStorage.setItem('authr_clients_cache', JSON.stringify({clients:STATE.clients,categories:STATE.categories})); } catch(e) {}
+          try { localStorage.setItem('authr_clients_cache', JSON.stringify({clients:STATE.clients,categories:STATE.categories,opex:OPEX})); } catch(e) {}
           setSyncStatus('ok', 'Tersinkron — ' + STATE.clients.length + ' klien');
           updateLastSyncText(); hideConflictBanner(); render();
         } else if (res.ok && !res.data) {
@@ -776,23 +780,45 @@ function loadFromSheets(force) {
 function saveToSheets() {
   setSyncStatus('loading', 'Menyimpan ke Google Sheets...');
   var ts = Date.now().toString();
-  // Form POST via hidden iframe (bypass CORS untuk write)
-  var iframe = document.getElementById('hiddenIframe');
-  if (!iframe) {
-    iframe = document.createElement('iframe');
-    iframe.name = 'hiddenIframe'; iframe.id = 'hiddenIframe'; iframe.style.display = 'none';
-    document.body.appendChild(iframe);
-  }
-  var form = document.createElement('form');
-  form.method = 'POST'; form.action = SHEETS_URL; form.target = 'hiddenIframe'; form.style.display = 'none';
-  var inp = document.createElement('input');
-  inp.type = 'hidden'; inp.name = 'payload';
-  inp.value = JSON.stringify({ action:'save', data: JSON.stringify({clients:STATE.clients, categories:STATE.categories, ts:ts}) });
-  form.appendChild(inp); document.body.appendChild(form); form.submit();
-  setTimeout(function(){ form.remove(); }, 1000);
-  LAST_SERVER_TS = ts;
-  try { localStorage.setItem('authr_clients_cache', JSON.stringify({clients:STATE.clients,categories:STATE.categories})); } catch(e) {}
-  setTimeout(function(){ setSyncStatus('ok', 'Tersimpan di Google Sheets'); updateLastSyncText(); }, 2000);
+  var payload = { action:'save', data: JSON.stringify({clients:STATE.clients, categories:STATE.categories, opex:OPEX, ts:ts}) };
+  fetch(SHEETS_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+  .then(function(resp){ return resp.text(); })
+  .then(function(text){
+    try {
+      var res = JSON.parse(text);
+      if (res.ok) {
+        LAST_SERVER_TS = ts;
+        try { localStorage.setItem('authr_clients_cache', JSON.stringify({clients:STATE.clients,categories:STATE.categories,opex:OPEX})); } catch(e) {}
+        setSyncStatus('ok', 'Tersimpan di Google Sheets');
+        updateLastSyncText();
+      } else {
+        setSyncStatus('error', 'Gagal simpan: '+(res.error||'unknown'));
+      }
+    } catch(e) {
+      // Form POST tidak return response yang bisa dibaca, anggap berhasil
+      LAST_SERVER_TS = ts;
+      try { localStorage.setItem('authr_clients_cache', JSON.stringify({clients:STATE.clients,categories:STATE.categories,opex:OPEX})); } catch(e) {}
+      setSyncStatus('ok', 'Tersimpan di Google Sheets');
+      updateLastSyncText();
+    }
+  })
+  .catch(function(){
+    // CORS block pada POST — fallback ke form POST
+    var iframe = document.getElementById('hiddenIframe');
+    if (!iframe) { iframe = document.createElement('iframe'); iframe.name='hiddenIframe'; iframe.id='hiddenIframe'; iframe.style.display='none'; document.body.appendChild(iframe); }
+    var form = document.createElement('form');
+    form.method='POST'; form.action=SHEETS_URL; form.target='hiddenIframe'; form.style.display='none';
+    var inp = document.createElement('input');
+    inp.type='hidden'; inp.name='payload'; inp.value=JSON.stringify(payload);
+    form.appendChild(inp); document.body.appendChild(form); form.submit();
+    setTimeout(function(){ form.remove(); }, 1000);
+    LAST_SERVER_TS = ts;
+    try { localStorage.setItem('authr_clients_cache', JSON.stringify({clients:STATE.clients,categories:STATE.categories,opex:OPEX})); } catch(e) {}
+    setTimeout(function(){ setSyncStatus('ok', 'Tersimpan di Google Sheets'); updateLastSyncText(); }, 2000);
+  });
 }
 async function saveAndRender() { saveToSheets(); render(); }
 function manualSync() { loadFromSheets(true); }
